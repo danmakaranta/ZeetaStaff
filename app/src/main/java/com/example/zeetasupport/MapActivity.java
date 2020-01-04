@@ -1,17 +1,10 @@
 package com.example.zeetasupport;
 
 import android.Manifest;
-import android.app.Dialog;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.Toast;
-
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -22,7 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-public class MapActivity extends AppCompatActivity implements OnMapReadyCallback{
+public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final String TAG = "MapActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
@@ -34,8 +27,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        Log.d(TAG,"onMapReady: map is ready here");
-        Toast.makeText(this,"Map is ready",Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "onMapReady: map is ready here");
+        Toast.makeText(this, "Map is ready", Toast.LENGTH_SHORT).show();
         mMap = googleMap;
     }
 
@@ -48,20 +41,24 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
 
     private void initMap() {// for initializing the map
-        Log.d(TAG,"initMap: initiallizing map");
+        Log.d(TAG, "initMap: initializing map");
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(MapActivity.this);
     }
 
     private void getLocationPermission() {
-        String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_NETWORK_STATE, Manifest.permission.INTERNET};
+        String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
         if (ContextCompat.checkSelfPermission(this.getApplicationContext(), FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             if (ContextCompat.checkSelfPermission(this.getApplicationContext(), COURSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 mLocationPermissionGranted = true;
             } else {
+                Log.d(TAG, "getLocationPermission: Location permission failed");
                 ActivityCompat.requestPermissions(this, permissions, LOCATION_PERMISSIONS_REQUEST_CODE);
             }
 
+        } else {
+            Log.d(TAG, "getLocationPermission: Location permission failed");
+            ActivityCompat.requestPermissions(this, permissions, LOCATION_PERMISSIONS_REQUEST_CODE);
         }
 
     }
@@ -76,9 +73,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     for (int i = 0; i < grantResults.length; i++) {
                         if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
                             mLocationPermissionGranted = false;
+                            Log.d(TAG, "onRequestPermission: permission request failed");
                             return;
                         }
                     }
+                    Log.d(TAG, "onRequestPermission: permission granted");
                     mLocationPermissionGranted = true;
                     //initialize our map
                     initMap();
