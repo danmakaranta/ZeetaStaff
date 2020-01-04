@@ -51,7 +51,27 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-   
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        mLocationPermissionGranted = false;
+
+        switch (requestCode){
+            case LOCATION_PERMISSIONS_REQUEST_CODE:{
+                if(grantResults.length >0 ){// that means some kind of permission was granted
+                    for(int i=0; i < grantResults.length; i++){
+                        if(grantResults[i]!= PackageManager.PERMISSION_GRANTED){
+                            mLocationPermissionGranted = false;
+                            return;
+                        }
+                    }
+                    mLocationPermissionGranted = true;
+                    //initialize our map
+
+
+                }
+            }
+        }
+    }
 
     private void init() {
         Button btnMap = (Button) findViewById(R.id.btnMap);
