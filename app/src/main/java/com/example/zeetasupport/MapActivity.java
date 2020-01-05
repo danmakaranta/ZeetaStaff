@@ -8,8 +8,10 @@ import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -44,7 +46,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
     private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
-    private static final float DEFAULT_ZOOM = 20f;
+    private static final float DEFAULT_ZOOM = 17f;
+    private ImageView mGps;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -74,6 +77,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
         mSearchText = (EditText) findViewById(R.id.input_search);
 
+        mGps = (ImageView) findViewById(R.id.ic_gps);
+
         init();
 
     }
@@ -90,23 +95,31 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 return false;
             }
         });
+
+        mGps.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getDeviceLocation();
+            }
+        });
+
     }
 
-    private void geolocate(){
+    private void geolocate() {
         String searchString = mSearchText.getText().toString();
         // create a geocoder object
         Geocoder geocoder = new Geocoder(MapActivity.this);
         List<Address> list = new ArrayList();
-        try{
+        try {
             list = geocoder.getFromLocationName(searchString, 1);
-        }catch(IOException e){
-            Log.d(TAG,"geolocate: input was wrong");
+        } catch (IOException e) {
+            Log.d(TAG, "geolocate: input was wrong");
         }
 
-        if(list.size() >0){
+        if (list.size() > 0) {
             Address address = list.get(0);
             //now move the camera to the location
-            moveCamera(new LatLng(address.getLatitude(),address.getLongitude()),DEFAULT_ZOOM,address.getAddressLine(0));
+            moveCamera(new LatLng(address.getLatitude(), address.getLongitude()), DEFAULT_ZOOM, address.getAddressLine(0));
         }
 
     }
@@ -126,7 +139,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                             Log.d(TAG, "onComplete: Location found");
                             Location currentLocation = (Location) task.getResult();
                             //move camera to current location on map
-                            moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM,"My location");
+                            moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
                         } else {
                             Log.d(TAG, "onComplete: current location null");
                             Toast.makeText(MapActivity.this, "Could not get current location, make sure location is enagbled", Toast.LENGTH_SHORT).show();
