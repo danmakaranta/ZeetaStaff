@@ -20,6 +20,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
@@ -104,7 +105,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
         if(list.size() >0){
             Address address = list.get(0);
-            Toast.makeText(this,address.toString(),Toast.LENGTH_SHORT).show();
+            //now move the camera to the location
+            moveCamera(new LatLng(address.getLatitude(),address.getLongitude()),DEFAULT_ZOOM,address.getAddressLine(0));
         }
 
     }
@@ -124,7 +126,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                             Log.d(TAG, "onComplete: Location found");
                             Location currentLocation = (Location) task.getResult();
                             //move camera to current location on map
-                            moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM);
+                            moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM,"My location");
                         } else {
                             Log.d(TAG, "onComplete: current location null");
                             Toast.makeText(MapActivity.this, "Could not get current location, make sure location is enagbled", Toast.LENGTH_SHORT).show();
@@ -139,10 +141,12 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     }
 
-    private void moveCamera(LatLng latlng, float zoom) {
+    private void moveCamera(LatLng latlng, float zoom, String title) {
         Log.d(TAG, "moveCamera: moving camera to current latitude:" + latlng.latitude + " longitude" + latlng.longitude);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
-
+        //create a marker to drop pin at the location
+        MarkerOptions options = new MarkerOptions().position(latlng).title(title);
+        mMap.addMarker(options);
     }
 
 
