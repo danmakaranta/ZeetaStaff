@@ -2,9 +2,15 @@ package com.example.zeetasupport;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -16,6 +22,10 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -33,7 +43,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
     private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
-    private static final float DEFAULT_ZOOM = 25f;
+    private static final float DEFAULT_ZOOM = 20f;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -41,20 +51,62 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         Toast.makeText(this, "Map is ready", Toast.LENGTH_SHORT).show();
         mMap = googleMap;
 
-        if(mLocationPermissionGranted){
+        if (mLocationPermissionGranted) {
             getDeviceLocation();
             mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(false);// remove the set location button from the screen
 
+            init();
         }
 
     }
+
+    //widget sections
+    private EditText mSearchText;
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
         getLocationPermission();
+
+        mSearchText = (EditText) findViewById(R.id.input_search);
+
+        init();
+
+    }
+
+    private void init() {
+        mSearchText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+
+                if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE || event.getAction() == event.ACTION_DOWN || event.getAction() == event.KEYCODE_ENTER) {
+                    geolocate();
+                }
+
+                return false;
+            }
+        });
+    }
+
+    private void geolocate(){
+        String searchString = mSearchText.getText().toString();
+        // create a geocoder object
+        Geocoder geocoder = new Geocoder(MapActivity.this);
+        List<Address> list = new ArrayList();
+        try{
+            list = geocoder.getFromLocationName(searchString, 1);
+        }catch(IOException e){
+            Log.d(TAG,"geolocate: input was wrong");
+        }
+
+        if(list.size() >0){
+            Address address = list.get(0);
+            Toast.makeText(this,address.toString(),Toast.LENGTH_SHORT).show();
+        }
+
     }
 
     private void getDeviceLocation() {
@@ -72,7 +124,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                             Log.d(TAG, "onComplete: Location found");
                             Location currentLocation = (Location) task.getResult();
                             //move camera to current location on map
-                            moveCamera(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()), DEFAULT_ZOOM);
+                            moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM);
                         } else {
                             Log.d(TAG, "onComplete: current location null");
                             Toast.makeText(MapActivity.this, "Could not get current location, make sure location is enagbled", Toast.LENGTH_SHORT).show();
@@ -87,9 +139,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     }
 
-    private void moveCamera(LatLng latlng, float zoom){
-       Log.d(TAG, "moveCamera: moving camera to current latitude:"+latlng.latitude +" longitude"+latlng.longitude);
-       mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng,zoom));
+    private void moveCamera(LatLng latlng, float zoom) {
+        Log.d(TAG, "moveCamera: moving camera to current latitude:" + latlng.latitude + " longitude" + latlng.longitude);
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
 
     }
 
