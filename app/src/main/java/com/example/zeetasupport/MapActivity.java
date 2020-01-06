@@ -26,6 +26,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -75,9 +76,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         setContentView(R.layout.activity_map);
         getLocationPermission();
 
-        mSearchText = (EditText) findViewById(R.id.input_search);
+        mSearchText = findViewById(R.id.input_search);
 
-        mGps = (ImageView) findViewById(R.id.ic_gps);
+        mGps = findViewById(R.id.ic_gps);
 
         init();
 
