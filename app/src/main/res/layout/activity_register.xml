@@ -64,7 +64,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="35dp"
                     android:layout_below="@+id/input_confirm_password"
-                    android:text="@string/register"
+                    android:text="Register"
                     android:background="@drawable/theme_button"/>
 
             </RelativeLayout>

@@ -16,4 +16,5 @@
     <string name="title_activity_register">RegisterActivity</string>
     <string name="email_registration">email_registration</string>
     <string name="confirm_password">confirm_password</string>
+    <string name="title_activity_enrollment">Enrollment</string>
 </resources>

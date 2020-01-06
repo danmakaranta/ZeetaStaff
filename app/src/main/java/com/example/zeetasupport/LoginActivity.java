@@ -1,4 +1,4 @@
-package com.example.zeetasupport.ui;
+package com.example.zeetasupport;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -9,10 +9,6 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.example.zeetasupport.MapActivity;
-import com.example.zeetasupport.R;
-import com.example.zeetasupport.RegisterActivity;
-import com.example.zeetasupport.UserClient;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
@@ -29,6 +25,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import static android.text.TextUtils.isEmpty;
+import static com.example.zeetasupport.R.id.email_sign_in_button;
+import static com.example.zeetasupport.R.id.link_register;
 
 public class LoginActivity extends AppCompatActivity implements
         View.OnClickListener {
@@ -51,8 +49,8 @@ public class LoginActivity extends AppCompatActivity implements
         mProgressBar = findViewById(R.id.progressBar);
 
         setupFirebaseAuth();
-        findViewById(R.id.email_sign_in_button).setOnClickListener(this);
-        findViewById(R.id.link_register).setOnClickListener(this);
+        findViewById(email_sign_in_button).setOnClickListener(this);
+        findViewById(link_register).setOnClickListener(this);
 
         hideSoftKeyboard();
     }
@@ -170,14 +168,15 @@ public class LoginActivity extends AppCompatActivity implements
 
     @Override
     public void onClick(View v) {
+        Log.d(TAG, "onClick: just testing to see if the listener is ever called");
         switch (v.getId()) {
-            case R.id.link_register: {
+            case link_register: {
                 Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
                 startActivity(intent);
                 break;
             }
 
-            case R.id.email_sign_in_button: {
+            case email_sign_in_button: {
                 signIn();
                 break;
             }
