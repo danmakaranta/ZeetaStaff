@@ -1,4 +1,4 @@
-package com.example.zeetasupport.ui;
+package com.example.zeetasupport.models;
 
 
 import android.os.Parcel;

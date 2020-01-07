@@ -1,32 +1,176 @@
 package com.example.zeetasupport;
 
+import android.content.Intent;
 import android.os.Bundle;
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.example.zeetasupport.models.User;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 
+import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
+import android.widget.EditText;
+import android.widget.ProgressBar;
+import android.widget.Toast;
 
-public class Enrollment extends AppCompatActivity {
+import static android.text.TextUtils.isEmpty;
+import static com.example.zeetasupport.ui.Check.doStringsMatch;
+
+public class Enrollment extends AppCompatActivity implements View.OnClickListener {
+
+    //widgets
+    private EditText mEmail, mPassword, mConfirmPassword;
+    private ProgressBar mProgressBar;
+
+    private static final String TAG = "EnrollmentActivity";
+
+    //vars
+    private FirebaseFirestore mDb;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_enrollment);
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
+        mEmail = findViewById(R.id.email_input);
+        mPassword = findViewById(R.id.password_input);
+        mConfirmPassword = findViewById(R.id.confirm_password_input);
+        mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
+
+        findViewById(R.id.register_btn).setOnClickListener(this);
+
+        mDb = FirebaseFirestore.getInstance();
+
+        //hideSoftKeyboard();
+
     }
 
+
+    /**
+     * Register a new email and password to Firebase Authentication
+     * @param email
+     * @param password
+     */
+    public void registerNewEmail(final String email, String password){
+
+        showDialog();
+
+        FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        Log.d(TAG, "createUserWithEmail:onComplete:" + task.isSuccessful());
+
+                        if (task.isSuccessful()){
+                            Log.d(TAG, "onComplete: AuthState: " + FirebaseAuth.getInstance().getCurrentUser().getUid());
+
+                            //insert some default data
+                            User user = new User();
+                            user.setEmail(email);
+                            user.setUsername(email.substring(0, email.indexOf("@")));
+                            user.setUser_id(FirebaseAuth.getInstance().getUid());
+
+                            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                                    .setTimestampsInSnapshotsEnabled(true)
+                                    .build();
+                            mDb.setFirestoreSettings(settings);
+
+                            DocumentReference newUserRef = mDb
+                                    .collection(getString(R.string.collection_users))
+                                    .document(FirebaseAuth.getInstance().getUid());
+
+                            newUserRef.set(user).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    hideDialog();
+
+                                    if(task.isSuccessful()){
+                                        redirectLoginScreen();
+                                    }else{
+                                        View parentLayout = findViewById(android.R.id.content);
+                                        Snackbar.make(parentLayout, "Something went wrong.", Snackbar.LENGTH_SHORT).show();
+                                    }
+                                }
+                            });
+
+                        }
+                        else {
+                            View parentLayout = findViewById(android.R.id.content);
+                            Snackbar.make(parentLayout, "Something went wrong.", Snackbar.LENGTH_SHORT).show();
+                            hideDialog();
+                        }
+
+                        // ...
+                    }
+                });
+    }
+
+    /**
+     * Redirects the user to the login screen
+     */
+    private void redirectLoginScreen(){
+        Log.d(TAG, "redirectLoginScreen: redirecting to login screen.");
+        Toast.makeText(Enrollment.this, "Redirecting to login page", Toast.LENGTH_SHORT).show();
+        Intent intent = new Intent(Enrollment.this, Signin.class);
+        startActivity(intent);
+        finish();
+    }
+
+    private void showDialog(){
+        mProgressBar.setVisibility(View.VISIBLE);
+
+    }
+
+    private void hideDialog(){
+        if(mProgressBar.getVisibility() == View.VISIBLE){
+            mProgressBar.setVisibility(View.INVISIBLE);
+        }
+    }
+
+    private void hideSoftKeyboard(){
+        this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+    }
+
+
+
+    @Override
+    public void onClick(View v) {
+
+        switch (v.getId()){
+            case R.id.register_btn:{
+                Log.d(TAG, "onClick: attempting to register.");
+                Toast.makeText(Enrollment.this, "Attempting to register", Toast.LENGTH_SHORT).show();
+
+                //check for null valued EditText fields
+                if(!isEmpty(mEmail.getText().toString())
+                        && !isEmpty(mPassword.getText().toString())
+                        && !isEmpty(mConfirmPassword.getText().toString())){
+
+                    //check if passwords match
+                    if(doStringsMatch(mPassword.getText().toString(), mConfirmPassword.getText().toString())){
+
+                        //Initiate registration task
+                        registerNewEmail(mEmail.getText().toString(), mPassword.getText().toString());
+                    }else{
+                        Toast.makeText(Enrollment.this, "Passwords do not Match", Toast.LENGTH_SHORT).show();
+                    }
+
+                }else{
+                    Toast.makeText(Enrollment.this, "You must fill out all the fields", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            }
+        }
+
+    }
 }

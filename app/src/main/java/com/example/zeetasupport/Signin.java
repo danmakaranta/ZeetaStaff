@@ -30,12 +30,10 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import static android.text.TextUtils.isEmpty;
-import static com.example.zeetasupport.R.id.email_sign_in_button;
-import static com.example.zeetasupport.R.id.link_register;
 
 
 public class Signin extends AppCompatActivity implements
-        View.OnClickListener {
+        View.OnClickListener  {
     private static final String TAG = "LoginActivity";
 
     //Firebase
@@ -146,7 +144,7 @@ public class Signin extends AppCompatActivity implements
                 @Override
                 public void onFailure(@NonNull Exception e) {
                     Toast.makeText(Signin.this, "Authentication Failed", Toast.LENGTH_SHORT).show();
-                    //hideDialog();
+                    hideDialog();
                 }
             });
         } else {
@@ -157,7 +155,7 @@ public class Signin extends AppCompatActivity implements
     private void showDialog() {
         mProgressBar.setVisibility(View.VISIBLE);
         Intent intent = new Intent(Signin.this, MapActivity.class);
-        //intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
 
     }
@@ -178,7 +176,7 @@ public class Signin extends AppCompatActivity implements
         Log.d(TAG, "onClick: just testing to see if the listener is ever called");
         switch (v.getId()) {
             case R.id.register_button: {
-                Intent intent = new Intent(Signin.this, RegisterActivity.class);
+                Intent intent = new Intent(Signin.this, Enrollment.class);
                 startActivity(intent);
                 break;
             }

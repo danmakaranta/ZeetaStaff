@@ -48,7 +48,7 @@
                 android:layout_marginTop="30dp"
                 android:text="@string/sign_in"
                 android:textStyle="bold"
-                android:background="@drawable/theme_button"/>
+                android:background="#40e0d0"/>
 
             <RelativeLayout
                 android:layout_width="match_parent"
