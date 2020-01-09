@@ -17,7 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 public class UserRecyclerAdapter extends RecyclerView.Adapter<UserRecyclerAdapter.ViewHolder>{
 
-    private ArrayList<User> mUsers = new ArrayList<>();
+    private ArrayList<User> mUsers;
 
 
     public UserRecyclerAdapter(ArrayList<User> users) {

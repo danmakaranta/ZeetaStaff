@@ -21,36 +21,18 @@
         android:background="@drawable/white_boarder"
         android:elevation="10dp">
 
-        <ImageView
-            android:id="@+id/ic_magnify"
-            android:layout_width="15dp"
-            android:layout_height="15dp"
-            android:layout_centerVertical="true"
-            android:layout_marginLeft="10dp"
-            android:src="@drawable/ic_magnify" />
+
 
         <EditText
             android:id="@+id/input_search"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_centerVertical="true"
-            android:layout_toRightOf="@id/ic_magnify"
-            android:hint="Enter address of customer"
+            android:hint="Enter Service Type e.g Plumber, mechanic, lawyer etc"
             android:textSize="15sp"
-
             android:imeOptions="actionSearch"/>
     </RelativeLayout>
 
-    <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_below="@+id/relLayout1"
-        android:layout_alignParentRight="true"
-        android:layout_marginRight="10dp"
-        android:layout_marginTop="10dp"
-        android:scaleType="centerCrop"
-        android:id="@+id/ic_gps"
-        android:src="@drawable/ic_gps"
-        />
+
 
 </RelativeLayout>

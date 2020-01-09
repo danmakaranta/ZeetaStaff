@@ -29,7 +29,7 @@ import static com.example.zeetasupport.ui.Check.doStringsMatch;
 public class Enrollment extends AppCompatActivity implements View.OnClickListener {
 
     //widgets
-    private EditText mEmail, mPassword, mConfirmPassword;
+    private EditText mEmail, mPassword, mConfirmPassword, phoneNumber;
     private ProgressBar mProgressBar;
 
     private static final String TAG = "EnrollmentActivity";
@@ -43,25 +43,27 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
         setContentView(R.layout.activity_enrollment);
 
         mEmail = findViewById(R.id.email_input);
-        mPassword = findViewById(R.id.password_input);
-        mConfirmPassword = findViewById(R.id.confirm_password_input);
+        mPassword = findViewById(R.id.input_password);
+        mConfirmPassword = findViewById(R.id.input_confirm_password);
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
+        phoneNumber = findViewById(R.id.phone_number);
 
         findViewById(R.id.register_btn).setOnClickListener(this);
 
         mDb = FirebaseFirestore.getInstance();
 
-        //hideSoftKeyboard();
+        hideSoftKeyboard();
 
     }
 
 
     /**
      * Register a new email and password to Firebase Authentication
+     *
      * @param email
      * @param password
      */
-    public void registerNewEmail(final String email, String password){
+    public void registerNewEmail(final String email, String password, final String phoneNumber) {
 
         showDialog();
 
@@ -71,7 +73,7 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         Log.d(TAG, "createUserWithEmail:onComplete:" + task.isSuccessful());
 
-                        if (task.isSuccessful()){
+                        if (task.isSuccessful()) {
                             Log.d(TAG, "onComplete: AuthState: " + FirebaseAuth.getInstance().getCurrentUser().getUid());
 
                             //insert some default data
@@ -79,11 +81,13 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
                             user.setEmail(email);
                             user.setUsername(email.substring(0, email.indexOf("@")));
                             user.setUser_id(FirebaseAuth.getInstance().getUid());
+                            user.setPhoneNumber(phoneNumber);
 
                             FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
                                     .setTimestampsInSnapshotsEnabled(true)
                                     .build();
                             mDb.setFirestoreSettings(settings);
+
 
                             DocumentReference newUserRef = mDb
                                     .collection(getString(R.string.collection_users))
@@ -94,17 +98,16 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
                                 public void onComplete(@NonNull Task<Void> task) {
                                     hideDialog();
 
-                                    if(task.isSuccessful()){
+                                    if (task.isSuccessful()) {
                                         redirectLoginScreen();
-                                    }else{
+                                    } else {
                                         View parentLayout = findViewById(android.R.id.content);
                                         Snackbar.make(parentLayout, "Something went wrong.", Snackbar.LENGTH_SHORT).show();
                                     }
                                 }
                             });
 
-                        }
-                        else {
+                        } else {
                             View parentLayout = findViewById(android.R.id.content);
                             Snackbar.make(parentLayout, "Something went wrong.", Snackbar.LENGTH_SHORT).show();
                             hideDialog();
@@ -118,7 +121,7 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
     /**
      * Redirects the user to the login screen
      */
-    private void redirectLoginScreen(){
+    private void redirectLoginScreen() {
         Log.d(TAG, "redirectLoginScreen: redirecting to login screen.");
         Toast.makeText(Enrollment.this, "Redirecting to login page", Toast.LENGTH_SHORT).show();
         Intent intent = new Intent(Enrollment.this, Signin.class);
@@ -126,30 +129,31 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
         finish();
     }
 
-    private void showDialog(){
+    private void showDialog() {
         mProgressBar.setVisibility(View.VISIBLE);
 
     }
 
-    private void hideDialog(){
-        if(mProgressBar.getVisibility() == View.VISIBLE){
+    private void hideDialog() {
+        if (mProgressBar.getVisibility() == View.VISIBLE) {
             mProgressBar.setVisibility(View.INVISIBLE);
         }
     }
 
-    private void hideSoftKeyboard(){
+    private void hideSoftKeyboard() {
         this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
-
 
 
     @Override
     public void onClick(View v) {
 
-        switch (v.getId()){
-            case R.id.register_btn:{
+        switch (v.getId()) {
+            case R.id.register_btn: {
                 Log.d(TAG, "onClick: attempting to register.");
                 Toast.makeText(Enrollment.this, "Attempting to register", Toast.LENGTH_SHORT).show();
+
+                //registerNewEmail(mEmail.getText().toString(), mPassword.getText().toString(), phoneNumber.getText().toString());
 
                 //check for null valued EditText fields
                 if(!isEmpty(mEmail.getText().toString())
@@ -159,8 +163,13 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
                     //check if passwords match
                     if(doStringsMatch(mPassword.getText().toString(), mConfirmPassword.getText().toString())){
 
-                        //Initiate registration task
-                        registerNewEmail(mEmail.getText().toString(), mPassword.getText().toString());
+                        if (!isEmpty(phoneNumber.getText().toString())) {
+                            //Initiate registration task
+                            registerNewEmail(mEmail.getText().toString(), mPassword.getText().toString(), phoneNumber.getText().toString());
+                        } else {
+                            Toast.makeText(Enrollment.this, "Please type your phone number", Toast.LENGTH_SHORT).show();
+                        }
+                        //registerNewEmail(mEmail.getText().toString(), mPassword.getText().toString());
                     }else{
                         Toast.makeText(Enrollment.this, "Passwords do not Match", Toast.LENGTH_SHORT).show();
                     }

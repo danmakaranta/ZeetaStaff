@@ -40,6 +40,7 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
+import com.google.firebase.storage.FirebaseStorage;
 
 
 import java.io.IOException;
@@ -56,6 +57,9 @@ import static com.example.zeetasupport.util.Constants.PERMISSIONS_REQUEST_ENABLE
 
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
+    //firestore access for cloud storage
+    FirebaseStorage storage = FirebaseStorage.getInstance();
+
     private static final String TAG = "MapActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
     private static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
@@ -65,14 +69,15 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private static final float DEFAULT_ZOOM = 17f;
-    private ImageView mGps;
+
     private WorkerLocation mWorkerLocation;
     private FusedLocationProviderClient mFusedLocationClient;
+    private boolean markerPinned;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         Log.d(TAG, "onMapReady: map is ready here");
-        Toast.makeText(this, "Map is ready", Toast.LENGTH_SHORT).show();
+        //Toast.makeText(this, "Map is ready", Toast.LENGTH_SHORT).show();
         mMap = googleMap;
 
         if (mLocationPermissionGranted) {
@@ -99,8 +104,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         mSearchText = findViewById(R.id.input_search);
-
-        mGps = findViewById(R.id.ic_gps);
 
         mDb = FirebaseFirestore.getInstance();
 
@@ -144,7 +147,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         Log.d(TAG, "onComplete: successfully set the user client.");
                         User user = task.getResult().toObject(User.class);
                         mWorkerLocation.setUser(user);
-                        //((UserClient)getApplicationContext()).setUser(user);
+                        ((UserClient)getApplicationContext()).setUser(user);
                         getLastKnownLocation();
                     }
                 }
@@ -264,12 +267,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             }
         });
 
-        mGps.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                getDeviceLocation();
-            }
-        });
+
 
     }
 
@@ -327,7 +325,15 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
         //create a marker to drop pin at the location
         MarkerOptions options = new MarkerOptions().position(latlng).title(title);
-        mMap.addMarker(options);
+        markerPinned = true;
+
+        if(markerPinned){
+
+        }else{
+            initMap();
+            mMap.addMarker(options);
+        }
+
     }
 
 

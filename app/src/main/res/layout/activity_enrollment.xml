@@ -58,7 +58,7 @@
 
 
                 <EditText
-                    android:id="@+id/password_input"
+                    android:id="@+id/input_password"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
@@ -67,13 +67,22 @@
                     android:layout_below="@+id/email_input"/>
 
                 <EditText
-                    android:id="@+id/confirm_password_input"
+                    android:id="@+id/input_confirm_password"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:inputType="textPassword"
                     android:hint="@string/confirm_password"
-                    android:layout_below="@+id/password_input"/>
+                    android:layout_below="@+id/input_password"/>
+
+                <EditText
+                    android:id="@+id/phone_number"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:inputType="phone"
+                    android:hint="Mobile phone number"
+                    android:layout_below="@+id/input_confirm_password"/>
 
 
                 <Button
@@ -82,7 +91,7 @@
                     android:layout_height="wrap_content"
                     android:layout_centerInParent="true"
                     android:layout_marginTop="35dp"
-                    android:layout_below="@+id/confirm_password_input"
+                    android:layout_below="@+id/phone_number"
                     android:text="Register"
                     android:background="#40e0d0"/>
 

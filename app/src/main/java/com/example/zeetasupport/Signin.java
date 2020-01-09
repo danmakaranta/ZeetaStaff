@@ -14,6 +14,7 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.example.zeetasupport.models.User;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
@@ -24,7 +25,6 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
-import com.google.firebase.firestore.auth.User;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -34,7 +34,7 @@ import static android.text.TextUtils.isEmpty;
 
 public class Signin extends AppCompatActivity implements
         View.OnClickListener  {
-    private static final String TAG = "LoginActivity";
+    private static final String TAG = "Signin";
 
     //Firebase
     private FirebaseAuth.AuthStateListener mAuthListener;
@@ -88,7 +88,7 @@ public class Signin extends AppCompatActivity implements
                         public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                             if (task.isSuccessful()) {
                                 Log.d(TAG, "onComplete: successfully set the user client.");
-                                User user = task.getResult().toObject(User.class);
+                                com.example.zeetasupport.models.User user = task.getResult().toObject(User.class);
                                 ((UserClient) (getApplicationContext())).setUser(user);
                             }
                         }
@@ -98,7 +98,6 @@ public class Signin extends AppCompatActivity implements
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                     finish();
-
                 } else {
                     // User is signed out
                     Log.d(TAG, "onAuthStateChanged:signed_out");
