@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:name=".UserClient"
@@ -22,9 +23,13 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
+            android:name=".Request"
+            android:label="@string/title_activity_request"
+            android:theme="@style/AppTheme.NoActionBar"></activity>
+        <activity
             android:name=".user_list_item"
             android:label="@string/title_activity_user_list_item"
-            android:theme="@style/AppTheme.NoActionBar"></activity>
+            android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".Enrollment"
             android:label="@string/title_activity_enrollment"
@@ -50,6 +55,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".MapActivity" />
+
+        <service android:name=".services.LocationService"/>
     </application>
 
 </manifest>

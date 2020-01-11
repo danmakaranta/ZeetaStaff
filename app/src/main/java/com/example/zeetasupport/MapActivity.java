@@ -1,8 +1,12 @@
 package com.example.zeetasupport;
 
 import android.Manifest;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -11,18 +15,18 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.zeetasupport.models.User;
 import com.example.zeetasupport.models.WorkerLocation;
+import com.example.zeetasupport.services.LocationService;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -42,7 +46,6 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
 import com.google.firebase.storage.FirebaseStorage;
 
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,8 +54,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
+import static com.example.zeetasupport.R.string.collection_worker_locations;
 import static com.example.zeetasupport.util.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
 
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -83,7 +88,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         if (mLocationPermissionGranted) {
             getDeviceLocation();
             mMap.setMyLocationEnabled(true);
-            mMap.getUiSettings().setMyLocationButtonEnabled(false);// remove the set location button from the screen
+            mMap.getUiSettings().setMyLocationButtonEnabled(true);// remove the set location button from the screen
 
             init();
         }
@@ -107,9 +112,26 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
         mDb = FirebaseFirestore.getInstance();
 
+        markerPinned = false;
+
+        if (Build.VERSION.SDK_INT >= 26) {
+            String CHANNEL_ID = "my_channel_01";
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
+                    "MY Channel",
+                    NotificationManager.IMPORTANCE_DEFAULT);
+            ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
+            NotificationManager notificationManager = null;
+
+            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setContentTitle("")
+                    .setContentText("").build();
+
+        }
+
         init();
 
     }
+
 
     private void getLastKnownLocation() {
         Log.d(TAG, "getLastKnownLocation: called.");
@@ -126,7 +148,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
                     mWorkerLocation.setGeoPoint(geoPoint);
                     mWorkerLocation.setTimeStamp(null);
+
                     saveWokerLocation();
+                    startLocationService();
+
                 }
             }
         });
@@ -137,7 +162,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
         if(mWorkerLocation == null){
             mWorkerLocation = new WorkerLocation();
-            DocumentReference userRef = mDb.collection("Worker Location")
+            DocumentReference userRef = mDb.collection("Worker location")
                     .document(FirebaseAuth.getInstance().getUid());
 
             userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
@@ -303,7 +328,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     public void onComplete(@NonNull Task<Location> task) {
                         if (task.isSuccessful()) {
                             Log.d(TAG, "onComplete: Location found");
-                            Location currentLocation = (Location) task.getResult();
+                            Location currentLocation = task.getResult();
                             //move camera to current location on map
                             moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
                         } else {
@@ -325,13 +350,14 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
         //create a marker to drop pin at the location
         MarkerOptions options = new MarkerOptions().position(latlng).title(title);
-        markerPinned = true;
+
 
         if(markerPinned){
-
+            mMap.addMarker(options.position(latlng));
         }else{
             initMap();
             mMap.addMarker(options);
+            markerPinned = true;
         }
 
     }
@@ -402,6 +428,37 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
 
     }
+
+    private void startLocationService() {
+        Log.d(TAG, "startLocationService: Start of location service method");
+
+        if (!isLocationServiceRunning()) {
+            Intent serviceIntent = new Intent(MapActivity.this, LocationService.class);
+            this.startService(serviceIntent);
+            Log.d(TAG, "startLocationService: truly Started location service method");
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+
+                MapActivity.this.startForegroundService(serviceIntent);
+
+            } else {
+                startService(serviceIntent);
+            }
+        }
+    }
+
+    private boolean isLocationServiceRunning() {
+        ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if ("com.example.zeetasupport.services.LocationService".equals(service.service.getClassName())) {
+                Log.d(TAG, "isLocationServiceRunning: location service is already running.");
+                return true;
+            }
+        }
+        Log.d(TAG, "isLocationServiceRunning: location service is not running.");
+        return false;
+    }
+
 
 
 }

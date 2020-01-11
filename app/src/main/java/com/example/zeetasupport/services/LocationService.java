@@ -10,7 +10,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
-
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
@@ -38,7 +37,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
 
-class LocationService extends Service {
+public class LocationService extends Service {
 
     private static final String TAG = "LocationService";
 
@@ -109,38 +108,41 @@ class LocationService extends Service {
                         Location location = locationResult.getLastLocation();
 
                         if (location != null) {
-                            User user = ((UserClient)(getApplicationContext())).getUser();
+                            User user = ((UserClient) (getApplicationContext())).getUser();
                             GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
                             WorkerLocation userLocation = new WorkerLocation(user, geoPoint, null);
                             saveUserLocation(userLocation);
+                            Log.d(TAG, "onLocationResult: location of last known not null.");
                         }
                     }
                 },
                 Looper.myLooper()); // Looper.myLooper tells this to repeat forever until thread is destroyed
     }
 
-    private void saveUserLocation(final WorkerLocation userLocation){
+    private void saveUserLocation(final WorkerLocation userLocation) {
 
-        try{
+        try {
             DocumentReference locationRef = FirebaseFirestore.getInstance()
-                    .collection(getString(R.string.collection_user_locations))
+                    .collection("Worker location")
                     .document(FirebaseAuth.getInstance().getUid());
 
             locationRef.set(userLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
                 @Override
                 public void onComplete(@NonNull Task<Void> task) {
-                    if(task.isSuccessful()){
+                    if (task.isSuccessful()) {
                         Log.d(TAG, "onComplete: \ninserted user location into database." +
                                 "\n latitude: " + userLocation.getGeoPoint().getLatitude() +
                                 "\n longitude: " + userLocation.getGeoPoint().getLongitude());
                     }
                 }
             });
-        }catch (NullPointerException e){
+        } catch (NullPointerException e) {
             Log.e(TAG, "saveUserLocation: User instance is null, stopping location service.");
-            Log.e(TAG, "saveUserLocation: NullPointerException: "  + e.getMessage() );
+            Log.e(TAG, "saveUserLocation: NullPointerException: " + e.getMessage());
             stopSelf();
         }
 
     }
 }
+
+
