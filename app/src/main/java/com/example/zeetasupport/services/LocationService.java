@@ -15,7 +15,6 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
-import com.example.zeetasupport.R;
 import com.example.zeetasupport.UserClient;
 import com.example.zeetasupport.models.User;
 import com.example.zeetasupport.models.WorkerLocation;
@@ -40,11 +39,9 @@ import androidx.core.app.NotificationCompat;
 public class LocationService extends Service {
 
     private static final String TAG = "LocationService";
-
-    private FusedLocationProviderClient mFusedLocationClient;
     private final static long UPDATE_INTERVAL = 4 * 1000;  /* 4 secs */
     private final static long FASTEST_INTERVAL = 2000; /* 2 sec */
-
+    private FusedLocationProviderClient mFusedLocationClient;
 
     @Override
     public void onCreate() {

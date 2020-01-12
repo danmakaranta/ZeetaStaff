@@ -11,6 +11,10 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.VectorDrawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -35,6 +39,8 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -56,28 +62,31 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentActivity;
 
-import static com.example.zeetasupport.R.string.collection_worker_locations;
 import static com.example.zeetasupport.util.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
 
-public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    //firestore access for cloud storage
-    FirebaseStorage storage = FirebaseStorage.getInstance();
+public class MapActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private static final String TAG = "MapActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
     private static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
     private static final String COURSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
-    private boolean mLocationPermissionGranted = false;
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
+    private static final float DEFAULT_ZOOM = 17f;
+    //firestore access for cloud storage
+    FirebaseStorage storage = FirebaseStorage.getInstance();
+    private boolean mLocationPermissionGranted = false;
     private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
-    private static final float DEFAULT_ZOOM = 17f;
-
     private WorkerLocation mWorkerLocation;
     private FusedLocationProviderClient mFusedLocationClient;
     private boolean markerPinned;
+    //widget sections
+    private EditText mSearchText;
+    //vars
+    private FirebaseFirestore mDb;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -85,27 +94,32 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         //Toast.makeText(this, "Map is ready", Toast.LENGTH_SHORT).show();
         mMap = googleMap;
 
+
         if (mLocationPermissionGranted) {
             getDeviceLocation();
             mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(true);// remove the set location button from the screen
-
             init();
         }
 
     }
 
-    //widget sections
-    private EditText mSearchText;
-    //vars
-    private FirebaseFirestore mDb;
+    //for adding a custom marker, in Zeeta's case its a sign of a worker going in the direction
+    private BitmapDescriptor bitmapDescriptorFromVector(Context context, int vectorResId){
 
+        Drawable vectorDrawable = ContextCompat.getDrawable(context, vectorResId);
+        vectorDrawable.setBounds(0,0,vectorDrawable.getIntrinsicWidth(),vectorDrawable.getIntrinsicHeight());
+        Bitmap bitmap = Bitmap.createBitmap(vectorDrawable.getIntrinsicWidth(),vectorDrawable.getIntrinsicHeight(),Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        vectorDrawable.draw(canvas);
+        return BitmapDescriptorFactory.fromBitmap(bitmap);
+    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
-        //getLocationPermission();
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         mSearchText = findViewById(R.id.input_search);
@@ -148,7 +162,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
                     mWorkerLocation.setGeoPoint(geoPoint);
                     mWorkerLocation.setTimeStamp(null);
-
                     saveWokerLocation();
                     startLocationService();
 
@@ -158,9 +171,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     }
 
-    private void getWorkerDetails(){
+    private void getWorkerDetails() {
 
-        if(mWorkerLocation == null){
+        if (mWorkerLocation == null) {
             mWorkerLocation = new WorkerLocation();
             DocumentReference userRef = mDb.collection("Worker location")
                     .document(FirebaseAuth.getInstance().getUid());
@@ -168,26 +181,25 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                 @Override
                 public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                    if(task.isSuccessful()){
+                    if (task.isSuccessful()) {
                         Log.d(TAG, "onComplete: successfully set the user client.");
                         User user = task.getResult().toObject(User.class);
                         mWorkerLocation.setUser(user);
-                        ((UserClient)getApplicationContext()).setUser(user);
+                        ((UserClient) getApplicationContext()).setUser(user);
                         getLastKnownLocation();
                     }
                 }
             });
-        }
-        else{
+        } else {
             getLastKnownLocation();
         }
 
     }
 
 
-    private void saveWokerLocation(){
+    private void saveWokerLocation() {
 
-        if(mWorkerLocation != null){
+        if (mWorkerLocation != null) {
             DocumentReference locationRef = mDb.collection("Worker location")
                     .document(FirebaseAuth.getInstance().getUid());
 
@@ -195,7 +207,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 @Override
                 public void onComplete(@NonNull Task<Void> task) {
 
-                    if(task.isSuccessful()){
+                    if (task.isSuccessful()) {
                         Log.d(TAG, "saveUserLocation: \ninserted user location into database." +
                                 "\n latitude: " + mWorkerLocation.getGeoPoint().getLatitude() +
                                 "\n longitude: " + mWorkerLocation.getGeoPoint().getLongitude());
@@ -211,30 +223,29 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     @Override
     protected void onResume() {
         super.onResume();
-        if(checkMapServices()){
-            if(mLocationPermissionGranted){
+        if (checkMapServices()) {
+            if (mLocationPermissionGranted) {
 
                 getWorkerDetails();
-            }
-            else{
+            } else {
                 getLocationPermission();
             }
         }
     }
 
-    private boolean checkMapServices(){
-        if(isServicesOk()){
-            if(isMapsEnabled()){
+    private boolean checkMapServices() {
+        if (isServicesOk()) {
+            if (isMapsEnabled()) {
                 return true;
             }
         }
         return false;
     }
 
-    public boolean isMapsEnabled(){
-        final LocationManager manager = (LocationManager) getSystemService( Context.LOCATION_SERVICE );
+    public boolean isMapsEnabled() {
+        final LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
-        if ( !manager.isProviderEnabled( LocationManager.GPS_PROVIDER ) ) {
+        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             buildAlertMessageNoGps();
             return false;
         }
@@ -293,7 +304,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         });
 
 
-
     }
 
     private void geolocate() {
@@ -349,14 +359,15 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         Log.d(TAG, "moveCamera: moving camera to current latitude:" + latlng.latitude + " longitude" + latlng.longitude);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
         //create a marker to drop pin at the location
-        MarkerOptions options = new MarkerOptions().position(latlng).title(title);
+        MarkerOptions options = new MarkerOptions().position(latlng);
 
 
-        if(markerPinned){
-            mMap.addMarker(options.position(latlng));
-        }else{
+        if (markerPinned) {
+            mMap.addMarker(options.position(latlng)).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
+        } else {
             initMap();
-            mMap.addMarker(options);
+            //mMap.addMarker(options.position(latlng)).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
+            mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
             markerPinned = true;
         }
 
@@ -418,10 +429,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         Log.d(TAG, "onActivityResult: called.");
         switch (requestCode) {
             case PERMISSIONS_REQUEST_ENABLE_GPS: {
-                if(mLocationPermissionGranted){
+                if (mLocationPermissionGranted) {
                     getWorkerDetails();
-                }
-                else{
+                } else {
                     getLocationPermission();
                 }
             }
@@ -458,7 +468,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         Log.d(TAG, "isLocationServiceRunning: location service is not running.");
         return false;
     }
-
 
 
 }

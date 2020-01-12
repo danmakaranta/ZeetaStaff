@@ -42,7 +42,7 @@
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAUvaW9jxRVffc4YM-wgbqKdgWd89pkq4I" />
+            android:value="AIzaSyDtZoloBYNpnid7QJG_3xzm-Skay3S0oBs" />
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
@@ -56,7 +56,7 @@
         </activity>
         <activity android:name=".MapActivity" />
 
-        <service android:name=".services.LocationService"/>
+        <service android:name=".services.LocationService" />
     </application>
 
 </manifest>

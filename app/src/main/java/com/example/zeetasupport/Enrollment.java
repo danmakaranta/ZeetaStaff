@@ -2,6 +2,12 @@ package com.example.zeetasupport;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.EditText;
+import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import com.example.zeetasupport.models.User;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -16,24 +22,15 @@ import com.google.firebase.firestore.FirebaseFirestoreSettings;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.util.Log;
-import android.view.View;
-import android.view.WindowManager;
-import android.widget.EditText;
-import android.widget.ProgressBar;
-import android.widget.Toast;
-
 import static android.text.TextUtils.isEmpty;
 import static com.example.zeetasupport.ui.Check.doStringsMatch;
 
 public class Enrollment extends AppCompatActivity implements View.OnClickListener {
 
+    private static final String TAG = "EnrollmentActivity";
     //widgets
     private EditText mEmail, mPassword, mConfirmPassword, phoneNumber;
     private ProgressBar mProgressBar;
-
-    private static final String TAG = "EnrollmentActivity";
-
     //vars
     private FirebaseFirestore mDb;
 
@@ -156,12 +153,12 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
                 //registerNewEmail(mEmail.getText().toString(), mPassword.getText().toString(), phoneNumber.getText().toString());
 
                 //check for null valued EditText fields
-                if(!isEmpty(mEmail.getText().toString())
+                if (!isEmpty(mEmail.getText().toString())
                         && !isEmpty(mPassword.getText().toString())
-                        && !isEmpty(mConfirmPassword.getText().toString())){
+                        && !isEmpty(mConfirmPassword.getText().toString())) {
 
                     //check if passwords match
-                    if(doStringsMatch(mPassword.getText().toString(), mConfirmPassword.getText().toString())){
+                    if (doStringsMatch(mPassword.getText().toString(), mConfirmPassword.getText().toString())) {
 
                         if (!isEmpty(phoneNumber.getText().toString())) {
                             //Initiate registration task
@@ -170,11 +167,11 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
                             Toast.makeText(Enrollment.this, "Please type your phone number", Toast.LENGTH_SHORT).show();
                         }
                         //registerNewEmail(mEmail.getText().toString(), mPassword.getText().toString());
-                    }else{
+                    } else {
                         Toast.makeText(Enrollment.this, "Passwords do not Match", Toast.LENGTH_SHORT).show();
                     }
 
-                }else{
+                } else {
                     Toast.makeText(Enrollment.this, "You must fill out all the fields", Toast.LENGTH_SHORT).show();
                 }
                 break;

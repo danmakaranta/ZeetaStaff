@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-
 import com.example.zeetasupport.R;
 import com.example.zeetasupport.models.User;
 
@@ -15,7 +14,7 @@ import java.util.ArrayList;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-public class UserRecyclerAdapter extends RecyclerView.Adapter<UserRecyclerAdapter.ViewHolder>{
+public class UserRecyclerAdapter extends RecyclerView.Adapter<UserRecyclerAdapter.ViewHolder> {
 
     private ArrayList<User> mUsers;
 
@@ -34,8 +33,8 @@ public class UserRecyclerAdapter extends RecyclerView.Adapter<UserRecyclerAdapte
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        ((ViewHolder)holder).username.setText(mUsers.get(position).getUsername());
-        ((ViewHolder)holder).email.setText(mUsers.get(position).getEmail());
+        ((ViewHolder) holder).username.setText(mUsers.get(position).getUsername());
+        ((ViewHolder) holder).email.setText(mUsers.get(position).getEmail());
     }
 
     @Override
@@ -44,8 +43,7 @@ public class UserRecyclerAdapter extends RecyclerView.Adapter<UserRecyclerAdapte
     }
 
 
-    public class ViewHolder extends RecyclerView.ViewHolder
-    {
+    public class ViewHolder extends RecyclerView.ViewHolder {
         TextView username, email;
 
         public ViewHolder(View itemView) {

@@ -1,2 +1,2 @@
 include ':app'
-rootProject.name='ZeetaSupport'
+rootProject.name='ZeetaSupport Client'

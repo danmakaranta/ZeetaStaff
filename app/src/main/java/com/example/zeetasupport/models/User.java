@@ -4,8 +4,19 @@ package com.example.zeetasupport.models;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-public class User implements Parcelable{
+public class User implements Parcelable {
 
+    public static final Creator<User> CREATOR = new Creator<User>() {
+        @Override
+        public User createFromParcel(Parcel in) {
+            return new User(in);
+        }
+
+        @Override
+        public User[] newArray(int size) {
+            return new User[size];
+        }
+    };
     private String email;
     private String user_id;
     private String username;
@@ -32,17 +43,9 @@ public class User implements Parcelable{
         phoneNumber = in.readString();
     }
 
-    public static final Creator<User> CREATOR = new Creator<User>() {
-        @Override
-        public User createFromParcel(Parcel in) {
-            return new User(in);
-        }
-
-        @Override
-        public User[] newArray(int size) {
-            return new User[size];
-        }
-    };
+    public static Creator<User> getCREATOR() {
+        return CREATOR;
+    }
 
     public String getAvatar() {
         return avatar;
@@ -50,10 +53,6 @@ public class User implements Parcelable{
 
     public void setAvatar(String avatar) {
         this.avatar = avatar;
-    }
-
-    public static Creator<User> getCREATOR() {
-        return CREATOR;
     }
 
     public String getEmail() {

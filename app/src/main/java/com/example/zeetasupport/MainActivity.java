@@ -21,7 +21,6 @@ import android.widget.Toast;
 import com.example.zeetasupport.services.LocationService;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.location.LocationServices;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -31,13 +30,18 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
     private static final String TAG = "MainActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
-    Intent intentThatCalled;
     public double latitude;
     public double longitude;
     public LocationManager locationManager;
     public Criteria criteria;
     public String bestProvider;
+    Intent intentThatCalled;
     String voice2text; //added
+
+    public static boolean isLocationEnabled(Context context) {
+        //...............
+        return true;
+    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -51,12 +55,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             getLocation();
         }
 
-    }
-
-
-    public static boolean isLocationEnabled(Context context) {
-        //...............
-        return true;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -83,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 latitude = location.getLatitude();
                 longitude = location.getLongitude();
                 Toast.makeText(MainActivity.this, "latitude:" + latitude + " longitude:" + longitude, Toast.LENGTH_SHORT).show();
-               // searchNearestPlace(voice2text);
+                // searchNearestPlace(voice2text);
             } else {
                 //This is what you need:
                 locationManager.requestLocationUpdates(bestProvider, 1000, 0, this);
@@ -172,7 +170,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         latitude = location.getLatitude();
         longitude = location.getLongitude();
         Toast.makeText(MainActivity.this, "latitude:" + latitude + " longitude:" + longitude, Toast.LENGTH_SHORT).show();
-       // searchNearestPlace(voice2text);
+        // searchNearestPlace(voice2text);
     }
 
     @Override

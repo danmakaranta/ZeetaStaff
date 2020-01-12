@@ -1,10 +1,5 @@
 package com.example.zeetasupport;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.os.Bundle;
-import android.view.View;
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -33,7 +28,7 @@ import static android.text.TextUtils.isEmpty;
 
 
 public class Signin extends AppCompatActivity implements
-        View.OnClickListener  {
+        View.OnClickListener {
     private static final String TAG = "Signin";
 
     //Firebase

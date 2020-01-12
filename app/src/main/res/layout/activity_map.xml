@@ -22,17 +22,15 @@
         android:elevation="10dp">
 
 
-
         <EditText
             android:id="@+id/input_search"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_centerVertical="true"
             android:hint="Enter Service Type e.g Plumber, mechanic, lawyer etc"
-            android:textSize="15sp"
-            android:imeOptions="actionSearch"/>
+            android:imeOptions="actionSearch"
+            android:textSize="15sp" />
     </RelativeLayout>
-
 
 
 </RelativeLayout>

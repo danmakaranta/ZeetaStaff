@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -15,8 +14,8 @@
             android:id="@+id/email_login_form"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
             android:layout_marginTop="20dp"
+            android:orientation="vertical"
             android:padding="20dp">
 
 
@@ -27,18 +26,17 @@
                 android:layout_marginTop="20dp"
                 android:hint="@string/prompt_email"
                 android:inputType="textEmailAddress"
-                android:maxLines="1"/>
+                android:maxLines="1" />
 
 
             <EditText
                 android:id="@+id/password"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/password"
                 android:layout_marginTop="20dp"
+                android:hint="@string/password"
                 android:inputType="textPassword"
-                android:maxLines="1"
-                />
+                android:maxLines="1" />
 
             <Button
                 android:id="@+id/sign_in_button"
@@ -46,25 +44,26 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="30dp"
+                android:background="#40e0d0"
                 android:text="@string/sign_in"
-                android:textStyle="bold"
-                android:background="#40e0d0"/>
+                android:textStyle="bold" />
 
             <RelativeLayout
+                android:id="@+id/relLayout1"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:id="@+id/relLayout1">
+                android:layout_height="wrap_content">
 
 
-                <TextView android:id="@+id/register_button"
+                <TextView
+                    android:id="@+id/register_button"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_centerHorizontal="true"
                     android:layout_marginTop="20dp"
-                    android:text="Register"
                     android:gravity="center"
-                    android:textSize="16sp"
+                    android:text="Register"
                     android:textColor="@color/linkBlue"
-                    android:layout_centerHorizontal="true"/>
+                    android:textSize="16sp" />
 
 
             </RelativeLayout>
@@ -74,12 +73,12 @@
     </ScrollView>
 
     <ProgressBar
+        android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/progressBar"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="200dp"
-        android:visibility="invisible"/>
+        android:visibility="invisible" />
 
 
 </RelativeLayout>
