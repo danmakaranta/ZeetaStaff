@@ -94,7 +94,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
         //Toast.makeText(this, "Map is ready", Toast.LENGTH_SHORT).show();
         mMap = googleMap;
 
-
         if (mLocationPermissionGranted) {
             getDeviceLocation();
             mMap.setMyLocationEnabled(true);
