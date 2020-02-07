@@ -4,9 +4,6 @@ import android.Manifest;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -14,16 +11,20 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.VectorDrawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.MenuItem;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -42,15 +43,26 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
 import com.google.firebase.storage.FirebaseStorage;
+import com.google.maps.DirectionsApiRequest;
+import com.google.maps.GeoApiContext;
+import com.google.maps.PendingResult;
+import com.google.maps.internal.PolylineEncoding;
+import com.google.maps.model.DirectionsResult;
+import com.google.maps.model.DirectionsRoute;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -58,9 +70,7 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
@@ -75,6 +85,10 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
     private static final String COURSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
     private static final float DEFAULT_ZOOM = 17f;
+    private static final int LOCATION_UPDATE_INTERVAL = 3000;
+    Location currentLocation;
+    Intent serviceIntent;
+    Button tempButton;
     //firestore access for cloud storage
     FirebaseStorage storage = FirebaseStorage.getInstance();
     private boolean mLocationPermissionGranted = false;
@@ -87,6 +101,17 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
     private EditText mSearchText;
     //vars
     private FirebaseFirestore mDb;
+    TextView connect;
+    TextView rating;
+    private ClientLocation mClientPosition;
+    private LatLngBounds mMapBoundary;
+    private ArrayList<WorkerLocation> mUserLocations = new ArrayList<>();
+    private GeoApiContext mGeoApiContext;
+    private Handler mHandler = new Handler();
+    private Runnable mRunnable;
+    //online status
+    private boolean online_status;
+    private FusedLocationProviderClient locationProviderClient;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -96,8 +121,8 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
 
         if (mLocationPermissionGranted) {
             getDeviceLocation();
-            mMap.setMyLocationEnabled(true);
-            mMap.getUiSettings().setMyLocationButtonEnabled(true);// remove the set location button from the screen
+          /*  mMap.setMyLocationEnabled(true);
+            mMap.getUiSettings().setMyLocationButtonEnabled(true);// remove the set location button from the screen*/
             init();
         }
 
@@ -118,30 +143,83 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
+        online_status = false;
+        tempButton = findViewById(R.id.change_btn);
+        connect = findViewById(R.id.connect_view);
+
+        serviceIntent = new Intent(MapActivity.this, LocationService.class);
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        mSearchText = findViewById(R.id.input_search);
+        //mSearchText = findViewById(R.id.input_search);
 
         mDb = FirebaseFirestore.getInstance();
 
         markerPinned = false;
-
-        if (Build.VERSION.SDK_INT >= 26) {
-            String CHANNEL_ID = "my_channel_01";
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                    "MY Channel",
-                    NotificationManager.IMPORTANCE_DEFAULT);
-            ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
-            NotificationManager notificationManager = null;
-
-            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setContentTitle("")
-                    .setContentText("").build();
-
+        if (mGeoApiContext == null) {
+            mGeoApiContext = new GeoApiContext.Builder()
+                    .apiKey(getString(R.string.google_maps_api_key))
+                    .build();
         }
 
-        init();
+        //initialize and assign variables for the bottom navigation
+        BottomNavigationView bottomNavigationView = findViewById(R.id.nav_view);
+        //set home icon selected
+        bottomNavigationView.setSelectedItemId(R.id.home_button);
+        //perform itemselectedlistener
+        bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
+                switch (menuItem.getItemId()) {
+                    case R.id.home_button:
+                        return true;
+                    case R.id.jobs_button:
+                        /*startActivity(new Intent(getApplicationContext(), Jobs.class));
+                        overridePendingTransition(0, 0);*/
+                        getUserLocations();
+                        return true;
+                    case R.id.dashboard_button:
+                        startActivity(new Intent(getApplicationContext(), DashBoard.class));
+                        overridePendingTransition(0, 0);
+                        return true;
+                }
+                return false;
+            }
+        });
+
+        tempButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                if (online_status) {
+                    online_status = false;
+                    tempButton.setText("Go online");
+                    tempButton.setBackgroundColor(getResources().getColor(R.color.green1));
+                    connect.setVisibility(View.VISIBLE);
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+                        if (Looper.myLooper().isCurrentThread() || Looper.getMainLooper().isCurrentThread()) {
+                            stopService(serviceIntent);
+                            Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
+
+                        }
+                    }
+
+                } else {
+                    Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
+                    //since user has chosen to be online, track current location
+                    startLocationService();
+                    online_status = true;
+                    connect.setVisibility(View.GONE);
+                    tempButton.setText("Go offline");
+                    tempButton.setBackgroundColor(getResources().getColor(R.color.red3));
+                }
+
+            }
+        });
+
+        // init();
 
     }
 
@@ -159,10 +237,11 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
                 if (task.isSuccessful()) {
                     Location location = task.getResult();
                     GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
+
                     mWorkerLocation.setGeoPoint(geoPoint);
+                    Log.d(TAG, "geopoint set.");
                     mWorkerLocation.setTimeStamp(null);
-                    saveWokerLocation();
-                    startLocationService();
+                    //saveWokerLocation();
 
                 }
             }
@@ -195,6 +274,118 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
 
     }
 
+    private void getUserLocations() {
+
+        DocumentReference clientL = FirebaseFirestore.getInstance()
+                .collection("Client location")
+                .document("GCN7ON2GAMuL7JyUY9wX"); // testing with an already dummy location data
+
+        clientL.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    Log.d(TAG, "getUserLocationss: successful at accessing the client location.");
+                    DocumentSnapshot doc = task.getResult();
+                    if (doc != null) {
+                        GeoPoint geoPoint = doc.getGeoPoint("location");
+                        //check to see if we have a latitude and longitude of the client for the cloud database
+                        Log.d(TAG, "Latitude " + geoPoint.getLatitude());
+                        Log.d(TAG, "Latitude " + geoPoint.getLongitude());
+
+                        //Now you can check for directions on how to get to the client
+                        double lat = geoPoint.getLatitude();
+                        double lng = geoPoint.getLongitude();
+                        MarkerOptions options = new MarkerOptions().position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude())));
+                        mMap.addMarker(options.position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude()))));
+                        calculateDirections(geoPoint);
+
+                    } else {
+                        Log.d(TAG, "Document is null for location ");
+                    }
+
+
+                }
+            }
+        })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.d(TAG, "getUserLocationss: unsuccessful at accessing the client location.");
+                    }
+                });
+
+    }
+
+
+    private void calculateDirections(GeoPoint gp) {
+        Log.d(TAG, "calculateDirections: calculating directions.");
+
+        com.google.maps.model.LatLng destination = new com.google.maps.model.LatLng(
+                gp.getLatitude(),
+                gp.getLongitude()
+        );
+        Log.d(TAG, "calculateDirections: finished calculating directions.");
+        DirectionsApiRequest directions = new DirectionsApiRequest(mGeoApiContext);
+
+
+        directions.alternatives(true);
+        directions.origin(
+                new com.google.maps.model.LatLng(
+                        currentLocation.getLatitude(),
+                        currentLocation.getLongitude()
+                )
+        );
+
+
+        Log.d(TAG, "calculateDirections: destination: " + destination.toString());
+        directions.destination(destination).setCallback(new PendingResult.Callback<DirectionsResult>() {
+            @Override
+            public void onResult(DirectionsResult result) {
+                Log.d(TAG, "calculateDirections: routes: " + result.routes[0].toString());
+                Log.d(TAG, "calculateDirections: duration: " + result.routes[0].legs[0].duration);
+                Log.d(TAG, "calculateDirections: distance: " + result.routes[0].legs[0].distance);
+                Log.d(TAG, "calculateDirections: geocodedWayPoints: " + result.geocodedWaypoints[0].toString());
+
+                Log.d(TAG, "onResult: successfully retrieved directions.");
+                addPolylinesToMap(result);
+            }
+
+            @Override
+            public void onFailure(Throwable e) {
+                Log.e(TAG, "calculateDirections: Failed to get directions: " + e.getMessage());
+            }
+        });
+    }
+
+    private void addPolylinesToMap(final DirectionsResult result) {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                Log.d(TAG, "run: result routes: " + result.routes.length);
+
+                for (DirectionsRoute route : result.routes) {
+                    Log.d(TAG, "run: leg: " + route.legs[0].toString());
+                    List<com.google.maps.model.LatLng> decodedPath = PolylineEncoding.decode(route.overviewPolyline.getEncodedPath());
+
+                    List<LatLng> newDecodedPath = new ArrayList<>();
+
+                    // This loops through all the LatLng coordinates of ONE polyline.
+                    for (com.google.maps.model.LatLng latLng : decodedPath) {
+
+                        newDecodedPath.add(new LatLng(
+                                latLng.lat,
+                                latLng.lng
+                        ));
+                    }
+                    Polyline polyline = mMap.addPolyline(new PolylineOptions().addAll(newDecodedPath));
+                    polyline.setColor(R.color.blue2);
+                    polyline.setClickable(true);
+
+                }
+            }
+        });
+    }
+
 
     private void saveWokerLocation() {
 
@@ -222,10 +413,17 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
     @Override
     protected void onResume() {
         super.onResume();
+        if (isLocationServiceRunning()) {
+            tempButton.setText("Go offline");
+            tempButton.setBackgroundColor(getResources().getColor(R.color.red3));
+            connect.setVisibility(View.GONE);
+            online_status = true;
+        }
+
+
         if (checkMapServices()) {
             if (mLocationPermissionGranted) {
-
-                getWorkerDetails();
+                //getWorkerDetails();
             } else {
                 getLocationPermission();
             }
@@ -290,17 +488,18 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
 
 
     private void init() {
-        mSearchText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        geolocate();
+       /* mSearchText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
 
                 if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE || event.getAction() == event.ACTION_DOWN || event.getAction() == event.KEYCODE_ENTER) {
-                    geolocate();
+
                 }
 
                 return false;
             }
-        });
+        });*/
 
 
     }
@@ -337,7 +536,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
                     public void onComplete(@NonNull Task<Location> task) {
                         if (task.isSuccessful()) {
                             Log.d(TAG, "onComplete: Location found");
-                            Location currentLocation = task.getResult();
+                            currentLocation = task.getResult();
                             //move camera to current location on map
                             moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
                         } else {
@@ -384,7 +583,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
         if (ContextCompat.checkSelfPermission(this.getApplicationContext(), FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             if (ContextCompat.checkSelfPermission(this.getApplicationContext(), COURSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 mLocationPermissionGranted = true;
-                getWorkerDetails();
+
                 initMap();// if the location permission is granted
             } else {
                 Log.d(TAG, "getLocationPermission: Location permission failed");
@@ -429,7 +628,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
         switch (requestCode) {
             case PERMISSIONS_REQUEST_ENABLE_GPS: {
                 if (mLocationPermissionGranted) {
-                    getWorkerDetails();
+                    // getWorkerDetails();
                 } else {
                     getLocationPermission();
                 }
@@ -438,22 +637,21 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
 
     }
 
+
     private void startLocationService() {
         Log.d(TAG, "startLocationService: Start of location service method");
 
         if (!isLocationServiceRunning()) {
-            Intent serviceIntent = new Intent(MapActivity.this, LocationService.class);
-            this.startService(serviceIntent);
-            Log.d(TAG, "startLocationService: truly Started location service method");
+            startService(serviceIntent);
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-
-                MapActivity.this.startForegroundService(serviceIntent);
-
-            } else {
-                startService(serviceIntent);
-            }
+        } else {
+            stopService(serviceIntent);// stop location updates from here
         }
+    }
+
+    private void stopLocationUpdates() {
+        mHandler.removeCallbacks(mRunnable);
+        stopService(serviceIntent);
     }
 
     private boolean isLocationServiceRunning() {

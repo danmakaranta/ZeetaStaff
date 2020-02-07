@@ -39,9 +39,11 @@ import androidx.core.app.NotificationCompat;
 public class LocationService extends Service {
 
     private static final String TAG = "LocationService";
+
+    private FusedLocationProviderClient mFusedLocationClient;
     private final static long UPDATE_INTERVAL = 4 * 1000;  /* 4 secs */
     private final static long FASTEST_INTERVAL = 2000; /* 2 sec */
-    private FusedLocationProviderClient mFusedLocationClient;
+
 
     @Override
     public void onCreate() {
@@ -113,7 +115,8 @@ public class LocationService extends Service {
                         }
                     }
                 },
-                Looper.myLooper()); // Looper.myLooper tells this to repeat forever until thread is destroyed
+                Looper.myLooper()
+        ); // Looper.myLooper tells this to repeat forever until thread is destroyed
     }
 
     private void saveUserLocation(final WorkerLocation userLocation) {
@@ -130,6 +133,8 @@ public class LocationService extends Service {
                         Log.d(TAG, "onComplete: \ninserted user location into database." +
                                 "\n latitude: " + userLocation.getGeoPoint().getLatitude() +
                                 "\n longitude: " + userLocation.getGeoPoint().getLongitude());
+                    } else {
+                        Log.e(TAG, "saveUserLocation: could'nt insert");
                     }
                 }
             });

@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         intentThatCalled = getIntent();
         voice2text = intentThatCalled.getStringExtra("v2txt");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            getLocation();
+            //getLocation();
         }
 
     }
@@ -80,8 +80,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 Log.e("TAG", "GPS is on");
                 latitude = location.getLatitude();
                 longitude = location.getLongitude();
-                Toast.makeText(MainActivity.this, "latitude:" + latitude + " longitude:" + longitude, Toast.LENGTH_SHORT).show();
-                // searchNearestPlace(voice2text);
+
             } else {
                 //This is what you need:
                 locationManager.requestLocationUpdates(bestProvider, 1000, 0, this);
