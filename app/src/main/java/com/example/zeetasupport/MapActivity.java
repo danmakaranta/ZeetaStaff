@@ -20,15 +20,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.zeetasupport.models.PolylineData;
 import com.example.zeetasupport.models.User;
 import com.example.zeetasupport.models.WorkerLocation;
 import com.example.zeetasupport.services.LocationService;
@@ -44,6 +43,7 @@ import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -77,7 +77,7 @@ import androidx.fragment.app.FragmentActivity;
 import static com.example.zeetasupport.util.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
 
 
-public class MapActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnPolylineClickListener {
 
     private static final String TAG = "MapActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
@@ -89,6 +89,8 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
     Location currentLocation;
     Intent serviceIntent;
     Button tempButton;
+    private ArrayList<PolylineData> mPolyLinesData = new ArrayList<>();
+    private Marker mSelectedMarker = null;
     //firestore access for cloud storage
     FirebaseStorage storage = FirebaseStorage.getInstance();
     private boolean mLocationPermissionGranted = false;
@@ -125,6 +127,8 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
             mMap.getUiSettings().setMyLocationButtonEnabled(true);// remove the set location button from the screen*/
             init();
         }
+
+        mMap.setOnPolylineClickListener(this);
 
     }
 
@@ -297,7 +301,9 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
                         double lng = geoPoint.getLongitude();
                         MarkerOptions options = new MarkerOptions().position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude())));
                         mMap.addMarker(options.position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude()))));
+
                         calculateDirections(geoPoint);
+
 
                     } else {
                         Log.d(TAG, "Document is null for location ");
@@ -362,7 +368,15 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
             @Override
             public void run() {
                 Log.d(TAG, "run: result routes: " + result.routes.length);
+                if (mPolyLinesData.size() > 0) {
+                    for (PolylineData polylineData : mPolyLinesData) {
+                        polylineData.getPolyline().remove();
+                    }
+                    mPolyLinesData.clear();
+                    mPolyLinesData = new ArrayList<>();
+                }
 
+                double duration = 999999999;
                 for (DirectionsRoute route : result.routes) {
                     Log.d(TAG, "run: leg: " + route.legs[0].toString());
                     List<com.google.maps.model.LatLng> decodedPath = PolylineEncoding.decode(route.overviewPolyline.getEncodedPath());
@@ -372,15 +386,26 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
                     // This loops through all the LatLng coordinates of ONE polyline.
                     for (com.google.maps.model.LatLng latLng : decodedPath) {
 
+//                        Log.d(TAG, "run: latlng: " + latLng.toString());
+
                         newDecodedPath.add(new LatLng(
                                 latLng.lat,
                                 latLng.lng
                         ));
                     }
                     Polyline polyline = mMap.addPolyline(new PolylineOptions().addAll(newDecodedPath));
-                    polyline.setColor(R.color.blue2);
+                    polyline.setColor(R.color.darkGrey);
                     polyline.setClickable(true);
+                    mPolyLinesData.add(new PolylineData(polyline, route.legs[0]));
 
+                    // highlight the fastest route and adjust camera
+                    double tempDuration = route.legs[0].duration.inSeconds;
+                    if (tempDuration < duration) {
+                        duration = tempDuration;
+                        onPolylineClick(polyline);
+                    }
+
+                    mSelectedMarker.setVisible(false);
                 }
             }
         });
@@ -667,4 +692,36 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
     }
 
 
+    @Override
+    public void onPolylineClick(Polyline polyline) {
+
+        int index = 0;
+        for (PolylineData polylineData : mPolyLinesData) {
+            index++;
+            Log.d(TAG, "onPolylineClick: toString: " + polylineData.toString());
+            if (polyline.getId().equals(polylineData.getPolyline().getId())) {
+                polylineData.getPolyline().setColor(R.color.blue2);
+                polylineData.getPolyline().setZIndex(1);
+
+                LatLng endLocation = new LatLng(
+                        polylineData.getLeg().endLocation.lat,
+                        polylineData.getLeg().endLocation.lng
+                );
+
+                Marker marker = mMap.addMarker(new MarkerOptions()
+                        .position(endLocation)
+                        .title("Trip #" + index)
+                        .snippet("Duration: " + polylineData.getLeg().duration
+                        ));
+
+
+                marker.showInfoWindow();
+                mSelectedMarker = marker;
+            } else {
+                polylineData.getPolyline().setColor(R.color.darkGrey);
+                polylineData.getPolyline().setZIndex(0);
+            }
+        }
+
+    }
 }
