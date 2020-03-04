@@ -31,6 +31,8 @@ import com.example.zeetasupport.models.PolylineData;
 import com.example.zeetasupport.models.User;
 import com.example.zeetasupport.models.WorkerLocation;
 import com.example.zeetasupport.services.LocationService;
+import com.firebase.geofire.GeoFire;
+import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -52,6 +54,9 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -85,7 +90,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     private static final String COURSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
     private static final float DEFAULT_ZOOM = 17f;
-    private static final int LOCATION_UPDATE_INTERVAL = 3000;
+    private static final int LOCATION_UPDATE_INTERVAL = 4000;
     Location currentLocation;
     Intent serviceIntent;
     Button tempButton;
@@ -95,10 +100,12 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     FirebaseStorage storage = FirebaseStorage.getInstance();
     private boolean mLocationPermissionGranted = false;
     private GoogleMap mMap;
+    GeoFire geoFire;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private WorkerLocation mWorkerLocation;
     private FusedLocationProviderClient mFusedLocationClient;
     private boolean markerPinned;
+    private ArrayList<Marker> mTripMarkers = new ArrayList<>();
     //widget sections
     private EditText mSearchText;
     //vars
@@ -128,6 +135,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             init();
         }
 
+
         mMap.setOnPolylineClickListener(this);
 
     }
@@ -143,10 +151,16 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
+
+
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference(FirebaseAuth.getInstance().getUid());
+        geoFire = new GeoFire(ref);
+
         online_status = false;
         tempButton = findViewById(R.id.change_btn);
         connect = findViewById(R.id.connect_view);
@@ -180,7 +194,9 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                     case R.id.jobs_button:
                         /*startActivity(new Intent(getApplicationContext(), Jobs.class));
                         overridePendingTransition(0, 0);*/
-                        getUserLocations();
+                        //getUserLocations();// used it to test if the directions method: getuserlocations actually worked.
+                        //test geofire capabilities
+                        getSelectedService("mechanic");
                         return true;
                     case R.id.dashboard_button:
                         startActivity(new Intent(getApplicationContext(), DashBoard.class));
@@ -205,6 +221,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
                         if (Looper.myLooper().isCurrentThread() || Looper.getMainLooper().isCurrentThread()) {
                             stopService(serviceIntent);
+                            //stopForeground(true);
                             Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
 
                         }
@@ -296,12 +313,9 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                         Log.d(TAG, "Latitude " + geoPoint.getLatitude());
                         Log.d(TAG, "Latitude " + geoPoint.getLongitude());
 
-                        //Now you can check for directions on how to get to the client
-                        double lat = geoPoint.getLatitude();
-                        double lng = geoPoint.getLongitude();
-                        MarkerOptions options = new MarkerOptions().position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude())));
-                        mMap.addMarker(options.position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude()))));
-
+                       /* MarkerOptions options = new MarkerOptions().position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude())));
+                       // mMap.addMarker(options.position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude()))));
+*/
                         calculateDirections(geoPoint);
 
 
@@ -394,7 +408,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                         ));
                     }
                     Polyline polyline = mMap.addPolyline(new PolylineOptions().addAll(newDecodedPath));
-                    polyline.setColor(R.color.darkGrey);
+                    polyline.setColor(R.color.blue2);
                     polyline.setClickable(true);
                     mPolyLinesData.add(new PolylineData(polyline, route.legs[0]));
 
@@ -405,7 +419,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                         onPolylineClick(polyline);
                     }
 
-                    mSelectedMarker.setVisible(false);
+
                 }
             }
         });
@@ -530,7 +544,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     }
 
     private void geolocate() {
-        String searchString = mSearchText.getText().toString();
+        String searchString = "hmedix";
         // create a geocoder object
         Geocoder geocoder = new Geocoder(MapActivity.this);
         List<Address> list = new ArrayList();
@@ -594,6 +608,20 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             markerPinned = true;
         }
 
+    }
+
+    private void resetSelectedMarker() {
+        if (mSelectedMarker != null) {
+            mSelectedMarker.setVisible(true);
+            mSelectedMarker = null;
+            removeTripMarkers();
+        }
+    }
+
+    private void removeTripMarkers() {
+        for (Marker marker : mTripMarkers) {
+            marker.remove();
+        }
     }
 
 
@@ -691,6 +719,38 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         return false;
     }
 
+    public void getSelectedService(final String servicez) {
+
+        mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
+            @Override
+            public void onComplete(@NonNull Task<android.location.Location> task) {
+                if (task.isSuccessful()) {
+                    Location location = task.getResult();
+                    GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
+
+                    geoFire.setLocation(servicez, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
+
+                        @Override
+                        public void onComplete(String key, DatabaseError error) {
+                            if (error != null) {
+                                Log.d(TAG, "there was an error saving location to geofire server");
+                            } else {
+                                Log.d(TAG, "Location saved successfully to geofire server");
+                            }
+                        }
+                    });
+
+                }
+            }
+        });
+
+        DocumentReference temp = mDb.collection("Users")
+                .document(FirebaseAuth.getInstance().getUid())
+                .collection("proffession").document();
+        Log.d(TAG, temp.getId().toString());
+
+    }
+
 
     @Override
     public void onPolylineClick(Polyline polyline) {
@@ -700,7 +760,8 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             index++;
             Log.d(TAG, "onPolylineClick: toString: " + polylineData.toString());
             if (polyline.getId().equals(polylineData.getPolyline().getId())) {
-                polylineData.getPolyline().setColor(R.color.blue2);
+
+                polylineData.getPolyline().setColor(ContextCompat.getColor(getApplicationContext(), R.color.blue2));
                 polylineData.getPolyline().setZIndex(1);
 
                 LatLng endLocation = new LatLng(
@@ -710,13 +771,13 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
                 Marker marker = mMap.addMarker(new MarkerOptions()
                         .position(endLocation)
-                        .title("Trip #" + index)
+                        .title("Route #" + index)
                         .snippet("Duration: " + polylineData.getLeg().duration
                         ));
 
+                mTripMarkers.add(marker);
 
                 marker.showInfoWindow();
-                mSelectedMarker = marker;
             } else {
                 polylineData.getPolyline().setColor(R.color.darkGrey);
                 polylineData.getPolyline().setZIndex(0);
