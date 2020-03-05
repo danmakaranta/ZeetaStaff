@@ -72,6 +72,7 @@ import com.google.maps.model.DirectionsRoute;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -157,8 +158,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
 
-
-        DatabaseReference ref = FirebaseDatabase.getInstance().getReference(FirebaseAuth.getInstance().getUid());
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
         geoFire = new GeoFire(ref);
 
         online_status = false;
@@ -169,7 +169,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        //mSearchText = findViewById(R.id.input_search);
 
         mDb = FirebaseFirestore.getInstance();
 
@@ -192,11 +191,9 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                     case R.id.home_button:
                         return true;
                     case R.id.jobs_button:
-                        /*startActivity(new Intent(getApplicationContext(), Jobs.class));
-                        overridePendingTransition(0, 0);*/
+                        startActivity(new Intent(getApplicationContext(), Jobs.class));
+                        overridePendingTransition(0, 0);
                         //getUserLocations();// used it to test if the directions method: getuserlocations actually worked.
-                        //test geofire capabilities
-                        getSelectedService("mechanic");
                         return true;
                     case R.id.dashboard_button:
                         startActivity(new Intent(getApplicationContext(), DashBoard.class));
@@ -230,7 +227,9 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                 } else {
                     Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
                     //since user has chosen to be online, track current location
+                    createOnlinePresence(getProffession());
                     startLocationService();
+
                     online_status = true;
                     connect.setVisibility(View.GONE);
                     tempButton.setText("Go offline");
@@ -243,6 +242,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         // init();
 
     }
+
 
 
     private void getLastKnownLocation() {
@@ -719,14 +719,14 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         return false;
     }
 
-    public void getSelectedService(final String servicez) {
+    public void createOnlinePresence(final String servicez) {
 
         mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
             @Override
             public void onComplete(@NonNull Task<android.location.Location> task) {
                 if (task.isSuccessful()) {
                     Location location = task.getResult();
-                    GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
+                    Log.d(TAG, "about to set location and profession to database");
 
                     geoFire.setLocation(servicez, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
 
@@ -742,13 +742,37 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
                 }
             }
+
+
         });
 
-        DocumentReference temp = mDb.collection("Users")
-                .document(FirebaseAuth.getInstance().getUid())
-                .collection("proffession").document();
-        Log.d(TAG, temp.getId().toString());
+    }
 
+    public String getProffession() {
+        final String[] sanaa = new String[1];
+        Log.d(TAG, "beginning of confusion");
+
+        DocumentReference proffession = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
+
+        proffession.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot doc = task.getResult();
+                    String aiki = (String) doc.get("profession");
+                    if (aiki == null) {
+                        Log.d(TAG, "No data found ");
+                    } else {
+                        Log.d(TAG, aiki);
+                        sanaa[0] = aiki;
+                    }
+                }
+            }
+
+        });
+        return sanaa[0];
     }
 
 
