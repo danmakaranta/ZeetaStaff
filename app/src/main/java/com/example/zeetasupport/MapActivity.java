@@ -61,7 +61,6 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
-import com.google.firebase.storage.FirebaseStorage;
 import com.google.maps.DirectionsApiRequest;
 import com.google.maps.GeoApiContext;
 import com.google.maps.PendingResult;
@@ -97,8 +96,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     Button tempButton;
     private ArrayList<PolylineData> mPolyLinesData = new ArrayList<>();
     private Marker mSelectedMarker = null;
-    //firestore access for cloud storage
-    FirebaseStorage storage = FirebaseStorage.getInstance();
+
     private boolean mLocationPermissionGranted = false;
     private GoogleMap mMap;
     GeoFire geoFire;
@@ -118,7 +116,9 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     private ArrayList<WorkerLocation> mUserLocations = new ArrayList<>();
     private GeoApiContext mGeoApiContext;
     private Handler mHandler = new Handler();
-    private Runnable mRunnable;
+
+
+    private String staffOccupation = "";
     //online status
     private boolean online_status;
     private FusedLocationProviderClient locationProviderClient;
@@ -135,7 +135,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             mMap.getUiSettings().setMyLocationButtonEnabled(true);// remove the set location button from the screen*/
             init();
         }
-
 
         mMap.setOnPolylineClickListener(this);
 
@@ -168,7 +167,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         serviceIntent = new Intent(MapActivity.this, LocationService.class);
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-
 
         mDb = FirebaseFirestore.getInstance();
 
@@ -220,16 +218,15 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                             stopService(serviceIntent);
                             //stopForeground(true);
                             Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
-
+                            deleteOnlinePresence("");
                         }
                     }
 
                 } else {
                     Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
                     //since user has chosen to be online, track current location
-                    createOnlinePresence(getProffession());
+                    createOnlinePresence(getProfession());
                     startLocationService();
-
                     online_status = true;
                     connect.setVisibility(View.GONE);
                     tempButton.setText("Go offline");
@@ -243,6 +240,8 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
     }
 
+    private void deleteOnlinePresence(String id) {
+    }
 
 
     private void getLastKnownLocation() {
@@ -426,28 +425,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     }
 
 
-    private void saveWokerLocation() {
 
-        if (mWorkerLocation != null) {
-            DocumentReference locationRef = mDb.collection("Worker location")
-                    .document(FirebaseAuth.getInstance().getUid());
-
-            locationRef.set(mWorkerLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
-                @Override
-                public void onComplete(@NonNull Task<Void> task) {
-
-                    if (task.isSuccessful()) {
-                        Log.d(TAG, "saveUserLocation: \ninserted user location into database." +
-                                "\n latitude: " + mWorkerLocation.getGeoPoint().getLatitude() +
-                                "\n longitude: " + mWorkerLocation.getGeoPoint().getLongitude());
-                    }
-
-                }
-            });
-
-        }
-
-    }
 
     @Override
     protected void onResume() {
@@ -528,18 +506,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
     private void init() {
         geolocate();
-       /* mSearchText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-
-                if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE || event.getAction() == event.ACTION_DOWN || event.getAction() == event.KEYCODE_ENTER) {
-
-                }
-
-                return false;
-            }
-        });*/
-
 
     }
 
@@ -703,7 +669,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     }
 
     private void stopLocationUpdates() {
-        mHandler.removeCallbacks(mRunnable);
+
         stopService(serviceIntent);
     }
 
@@ -728,6 +694,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                     Location location = task.getResult();
                     Log.d(TAG, "about to set location and profession to database");
 
+
                     geoFire.setLocation(servicez, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
 
                         @Override
@@ -748,9 +715,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
     }
 
-    public String getProffession() {
-        final String[] sanaa = new String[1];
-        Log.d(TAG, "beginning of confusion");
+    public String getProfession() {
 
         DocumentReference proffession = FirebaseFirestore.getInstance()
                 .collection("Users")
@@ -766,13 +731,13 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                         Log.d(TAG, "No data found ");
                     } else {
                         Log.d(TAG, aiki);
-                        sanaa[0] = aiki;
+                        staffOccupation = aiki;
                     }
                 }
             }
 
         });
-        return sanaa[0];
+        return staffOccupation;
     }
 
 
