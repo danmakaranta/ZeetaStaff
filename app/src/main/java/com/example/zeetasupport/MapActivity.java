@@ -111,6 +111,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     private FirebaseFirestore mDb;
     TextView connect;
     TextView rating;
+    private String staffID; // AUTHENTICATED ID
     private ClientLocation mClientPosition;
     private LatLngBounds mMapBoundary;
     private ArrayList<WorkerLocation> mUserLocations = new ArrayList<>();
@@ -156,8 +157,11 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
+        getProfession();
+        staffID = FirebaseAuth.getInstance().getUid();
 
-        DatabaseReference ref = FirebaseDatabase.getInstance().getReference(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference(getProfession()).child("ONLINE");
+
         geoFire = new GeoFire(ref);
 
         online_status = false;
@@ -218,7 +222,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                             stopService(serviceIntent);
                             //stopForeground(true);
                             Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
-                            deleteOnlinePresence("");
+                            deleteOnlinePresence(FirebaseAuth.getInstance().getUid());
                         }
                     }
 
@@ -241,6 +245,9 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     }
 
     private void deleteOnlinePresence(String id) {
+        Log.d(TAG, "deleteOnlinePresence: called.");
+        Log.d(TAG, id);
+        geoFire.removeLocation(id);
     }
 
 
@@ -694,8 +701,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                     Location location = task.getResult();
                     Log.d(TAG, "about to set location and profession to database");
 
-
-                    geoFire.setLocation(servicez, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
+                    geoFire.setLocation(staffID, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
 
                         @Override
                         public void onComplete(String key, DatabaseError error) {
@@ -716,6 +722,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     }
 
     public String getProfession() {
+
 
         DocumentReference proffession = FirebaseFirestore.getInstance()
                 .collection("Users")
