@@ -36,6 +36,9 @@ import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -91,6 +94,12 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
     private static final float DEFAULT_ZOOM = 17f;
     private static final int LOCATION_UPDATE_INTERVAL = 4000;
+    private final static long FASTEST_INTERVAL = 2000; /* 2 sec */
+    private static final int LOCATION_UPDATE_INTERVAL2 = 10000;
+    //lets use Handler and runnable
+    private Handler mHandler = new Handler();
+    private Runnable mRunnable;
+
     Location currentLocation;
     Intent serviceIntent;
     Button tempButton;
@@ -116,8 +125,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     private LatLngBounds mMapBoundary;
     private ArrayList<WorkerLocation> mUserLocations = new ArrayList<>();
     private GeoApiContext mGeoApiContext;
-    private Handler mHandler = new Handler();
-
 
     private String staffOccupation = "";
     //online status
@@ -131,7 +138,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         mMap = googleMap;
 
         if (mLocationPermissionGranted) {
-            getDeviceLocation();
+            //getDeviceLocation();
           /*  mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(true);// remove the set location button from the screen*/
             init();
@@ -170,7 +177,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
         serviceIntent = new Intent(MapActivity.this, LocationService.class);
 
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
 
         mDb = FirebaseFirestore.getInstance();
 
@@ -209,18 +216,20 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         tempButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
 
                 if (online_status) {
                     online_status = false;
                     tempButton.setText("Go online");
                     tempButton.setBackgroundColor(getResources().getColor(R.color.green1));
                     connect.setVisibility(View.VISIBLE);
+                    stopLocationUpdates();
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
                         if (Looper.myLooper().isCurrentThread() || Looper.getMainLooper().isCurrentThread()) {
-                            stopService(serviceIntent);
-                            //stopForeground(true);
+                            // stopService(serviceIntent);
+                            stopLocationUpdates();
                             Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
                             deleteOnlinePresence(FirebaseAuth.getInstance().getUid());
                         }
@@ -229,8 +238,9 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                 } else {
                     Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
                     //since user has chosen to be online, track current location
+                    startUserLocationsRunnable();
                     createOnlinePresence(getProfession());
-                    startLocationService();
+                    // startLocationService();
                     online_status = true;
                     connect.setVisibility(View.GONE);
                     tempButton.setText("Go offline");
@@ -248,6 +258,90 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         Log.d(TAG, "deleteOnlinePresence: called.");
         Log.d(TAG, id);
         geoFire.removeLocation(id);
+    }
+
+    private void startUserLocationsRunnable() {
+        Log.d(TAG, "startUserLocationsRunnable: starting runnable for retrieving updated locations.");
+        mHandler.postDelayed(mRunnable = new Runnable() {
+            @Override
+            public void run() {
+                getLocation();
+                mHandler.postDelayed(mRunnable, LOCATION_UPDATE_INTERVAL2);
+            }
+        }, LOCATION_UPDATE_INTERVAL2);
+    }
+
+
+    private void getLocation() {
+
+        // ---------------------------------- LocationRequest ------------------------------------
+        // Create the location request to start receiving updates
+        LocationRequest mLocationRequestHighAccuracy = new LocationRequest();
+        mLocationRequestHighAccuracy.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequestHighAccuracy.setInterval(LOCATION_UPDATE_INTERVAL2);
+        //mLocationRequestHighAccuracy.setFastestInterval(FASTEST_INTERVAL);
+
+
+        // new Google API SDK v11 uses getFusedLocationProviderClient(this)
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "getLocation: stopping the location service.");
+            stopLocationUpdates();
+            return;
+        }
+        Log.d(TAG, "getLocation: getting location information.");
+        mFusedLocationClient.requestLocationUpdates(mLocationRequestHighAccuracy, new LocationCallback() {
+                    @Override
+                    public void onLocationResult(LocationResult locationResult) {
+
+                        Log.d(TAG, "onLocationResult: got location result.");
+
+                        Location location = locationResult.getLastLocation();
+
+                        if (location != null) {
+                            User user = ((UserClient) (getApplicationContext())).getUser();
+                            GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
+                            WorkerLocation userLocation = new WorkerLocation(user, geoPoint, null);
+                            saveUserLocation(userLocation);
+                            Log.d(TAG, "onLocationResult: location of last known not null.");
+                        }
+                    }
+                },
+                Looper.myLooper()
+        ); // Looper.myLooper tells this to repeat forever until thread is destroyed
+    }
+
+
+    private void saveUserLocation(final WorkerLocation userLocation) {
+
+        try {
+            DocumentReference locationRef = FirebaseFirestore.getInstance()
+                    .collection("AbujaOnline")
+                    .document(FirebaseAuth.getInstance().getUid());
+
+            locationRef.set(userLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    if (task.isSuccessful()) {
+                        Log.d(TAG, "onComplete: \ninserted user location into database." +
+                                "\n latitude: " + userLocation.getGeoPoint().getLatitude() +
+                                "\n longitude: " + userLocation.getGeoPoint().getLongitude());
+                    } else {
+                        Log.e(TAG, "saveUserLocation: could'nt insert");
+                    }
+                }
+            });
+        } catch (NullPointerException e) {
+            Log.e(TAG, "saveUserLocation: User instance is null, stopping location service.");
+            Log.e(TAG, "saveUserLocation: NullPointerException: " + e.getMessage());
+        }
+
+    }
+
+
+    private void stopLocationUpdates() {
+
+        mHandler.removeCallbacks(mRunnable);
     }
 
 
@@ -512,8 +606,11 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
 
     private void init() {
-        geolocate();
+        geolocateInit();
+    }
 
+    private void geolocateInit() {
+        getDeviceLocation();
     }
 
     private void geolocate() {
@@ -675,10 +772,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         }
     }
 
-    private void stopLocationUpdates() {
-
-        stopService(serviceIntent);
-    }
 
     private boolean isLocationServiceRunning() {
         ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
@@ -699,7 +792,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             public void onComplete(@NonNull Task<android.location.Location> task) {
                 if (task.isSuccessful()) {
                     Location location = task.getResult();
-                    Log.d(TAG, "about to set location and profession to database");
+                    Log.d(TAG, "about to set location and UID to database");
 
                     geoFire.setLocation(staffID, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
 
@@ -724,9 +817,12 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     public String getProfession() {
 
 
-        DocumentReference proffession = FirebaseFirestore.getInstance()
-                .collection("Users")
-                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
+        DocumentReference proffession = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            proffession = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
+        }
 
         proffession.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
