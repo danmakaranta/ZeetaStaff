@@ -167,7 +167,6 @@ public class Signin extends AppCompatActivity implements
     @Override
     public void onClick(View v) {
 
-        Log.d(TAG, "onClick: just testing to see if the listener is ever called");
         switch (v.getId()) {
             case R.id.register_button: {
                 Intent intent = new Intent(Signin.this, Enrollment.class);

@@ -85,7 +85,6 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
                                     .build();
                             mDb.setFirestoreSettings(settings);
 
-
                             DocumentReference newUserRef = mDb
                                     .collection(getString(R.string.collection_users))
                                     .document(FirebaseAuth.getInstance().getUid());
@@ -128,7 +127,6 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
 
     private void showDialog() {
         mProgressBar.setVisibility(View.VISIBLE);
-
     }
 
     private void hideDialog() {

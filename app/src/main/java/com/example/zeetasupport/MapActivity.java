@@ -11,10 +11,12 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
-import android.location.Address;
-import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
+import android.media.AudioManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -47,7 +49,6 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
@@ -62,7 +63,9 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.GeoPoint;
 import com.google.maps.DirectionsApiRequest;
 import com.google.maps.GeoApiContext;
@@ -71,7 +74,6 @@ import com.google.maps.internal.PolylineEncoding;
 import com.google.maps.model.DirectionsResult;
 import com.google.maps.model.DirectionsRoute;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -94,7 +96,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
     private static final float DEFAULT_ZOOM = 17f;
     private static final int LOCATION_UPDATE_INTERVAL = 4000;
-    private final static long FASTEST_INTERVAL = 2000; /* 2 sec */
+    private final static long FASTEST_INTERVAL = 10000; /* 2 sec */
     private static final int LOCATION_UPDATE_INTERVAL2 = 10000;
     //lets use Handler and runnable
     private Handler mHandler = new Handler();
@@ -121,15 +123,21 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     TextView connect;
     TextView rating;
     private String staffID; // AUTHENTICATED ID
-    private ClientLocation mClientPosition;
-    private LatLngBounds mMapBoundary;
     private ArrayList<WorkerLocation> mUserLocations = new ArrayList<>();
     private GeoApiContext mGeoApiContext;
+
 
     private String staffOccupation = "";
     //online status
     private boolean online_status;
     private FusedLocationProviderClient locationProviderClient;
+
+    Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+    Ringtone ringtone;
+
+    //listen for a request
+    DocumentReference clientRequest;
+    private Handler handler;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -164,7 +172,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
-        getProfession();
+
         staffID = FirebaseAuth.getInstance().getUid();
 
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference(getProfession()).child("ONLINE");
@@ -174,12 +182,20 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         online_status = false;
         tempButton = findViewById(R.id.change_btn);
         connect = findViewById(R.id.connect_view);
+        ringtone = RingtoneManager.getRingtone(getApplicationContext(), alert);
+        handler = new Handler();
 
         serviceIntent = new Intent(MapActivity.this, LocationService.class);
 
-
-
         mDb = FirebaseFirestore.getInstance();
+
+
+        ringtone.setStreamType(AudioManager.STREAM_RING);
+        clientRequest = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(FirebaseAuth.getInstance().getUid()).collection("Request").document("ongoing");
+
+
 
         markerPinned = false;
         if (mGeoApiContext == null) {
@@ -187,6 +203,8 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                     .apiKey(getString(R.string.google_maps_api_key))
                     .build();
         }
+        getProfession();
+
 
         //initialize and assign variables for the bottom navigation
         BottomNavigationView bottomNavigationView = findViewById(R.id.nav_view);
@@ -223,35 +241,106 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                     tempButton.setText("Go online");
                     tempButton.setBackgroundColor(getResources().getColor(R.color.green1));
                     connect.setVisibility(View.VISIBLE);
-                    stopLocationUpdates();
+                    //stopLocationUpdates();
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
                         if (Looper.myLooper().isCurrentThread() || Looper.getMainLooper().isCurrentThread()) {
-                            // stopService(serviceIntent);
-                            stopLocationUpdates();
+                            stopService(serviceIntent);
+                            //stopLocationUpdates();
                             Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
                             deleteOnlinePresence(FirebaseAuth.getInstance().getUid());
+
+                            stopListenningForRequest();
                         }
                     }
 
                 } else {
-                    Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
+
                     //since user has chosen to be online, track current location
-                    startUserLocationsRunnable();
-                    createOnlinePresence(getProfession());
-                    // startLocationService();
+                    //startUserLocationsRunnable();
+                    createOnlinePresence();
+                    listenForRequest();
+                    startLocationService();
                     online_status = true;
                     connect.setVisibility(View.GONE);
                     tempButton.setText("Go offline");
                     tempButton.setBackgroundColor(getResources().getColor(R.color.red3));
+
+                    Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
                 }
 
             }
         });
-
         // init();
+    }
 
+    private void stopListenningForRequest() {
+        //not an option for now
+        clientRequest.delete().addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                Log.w(TAG, "Stop listening and clear any outstanding data.");
+            }
+        });
+    }
+
+    private void listenForRequest() {
+
+        stopListenningForRequest();
+
+        clientRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
+
+                if (e != null) {
+                    Log.w(TAG, "Listen failed.", e);
+                    return;
+                }
+
+                if (documentSnapshot != null && documentSnapshot.exists() && online_status) {
+                    Log.d(TAG, "Current data: " + documentSnapshot.getData());
+                    Log.d(TAG, "A change has been effected on this doc");
+                    // Toast.makeText(MapActivity.this, "You have a request", Toast.LENGTH_SHORT).show();
+                    ringtone.play();
+
+
+                    final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
+
+                    builder.setMessage("You have an incoming request. Do you want to accept it?")
+                            .setCancelable(true)
+                            .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                                public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                                    //do whatever you want down here!!!!
+                                    ringtone.stop();
+                                    dialog.dismiss();
+                                }
+                            })
+                            .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                                public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+
+                                    //clear the request
+                                    clientRequest.delete().addOnCompleteListener(new OnCompleteListener<Void>() {
+                                        @Override
+                                        public void onComplete(@NonNull Task<Void> task) {
+                                            Log.w(TAG, "Request not accepted, clear any outstanding request data.");
+                                        }
+                                    });
+                                    ringtone.stop();
+                                    dialog.dismiss();
+                                }
+                            });
+
+                    final AlertDialog alert = builder.create();
+                    alert.setTitle("Incoming request");
+                    alert.setIcon(R.drawable.zeetasample);
+                    alert.show();
+
+                } else {
+                    Log.d(TAG, "Current data: null");
+                }
+            }
+        });
     }
 
     private void deleteOnlinePresence(String id) {
@@ -536,6 +625,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             tempButton.setBackgroundColor(getResources().getColor(R.color.red3));
             connect.setVisibility(View.GONE);
             online_status = true;
+
         }
 
 
@@ -613,24 +703,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         getDeviceLocation();
     }
 
-    private void geolocate() {
-        String searchString = "hmedix";
-        // create a geocoder object
-        Geocoder geocoder = new Geocoder(MapActivity.this);
-        List<Address> list = new ArrayList();
-        try {
-            list = geocoder.getFromLocationName(searchString, 1);
-        } catch (IOException e) {
-            Log.d(TAG, "geolocate: input was wrong");
-        }
-
-        if (list.size() > 0) {
-            Address address = list.get(0);
-            //now move the camera to the location
-            moveCamera(new LatLng(address.getLatitude(), address.getLongitude()), DEFAULT_ZOOM, address.getAddressLine(0));
-        }
-
-    }
 
     private void getDeviceLocation() {
         Log.d(TAG, "getDeviceLocation: getting the device current location");
@@ -785,7 +857,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         return false;
     }
 
-    public void createOnlinePresence(final String servicez) {
+    public void createOnlinePresence() {
 
         mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
             @Override
@@ -816,13 +888,13 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
     public String getProfession() {
 
-
         DocumentReference proffession = null;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             proffession = FirebaseFirestore.getInstance()
                     .collection("Users")
                     .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
         }
+
 
         proffession.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override

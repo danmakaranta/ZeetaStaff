@@ -41,8 +41,8 @@ public class LocationService extends Service {
     private static final String TAG = "LocationService";
 
     private FusedLocationProviderClient mFusedLocationClient;
-    private final static long UPDATE_INTERVAL = 4 * 1000;  /* 4 secs */
-    private final static long FASTEST_INTERVAL = 2000; /* 2 sec */
+    private final static long UPDATE_INTERVAL = 10000;  /* 10 secs */
+    private final static long FASTEST_INTERVAL = 10000; /* 10 sec */
 
 
     @Override
@@ -63,14 +63,17 @@ public class LocationService extends Service {
                     .setContentTitle("")
                     .setContentText("").build();
 
-            startForeground(1, notification);
+            //startForeground(1, notification);
+
         }
+        getLocation();
     }
+
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand: called.");
-        getLocation();
+        // getLocation();
         return START_NOT_STICKY;
     }
 
@@ -123,8 +126,9 @@ public class LocationService extends Service {
 
         try {
             DocumentReference locationRef = FirebaseFirestore.getInstance()
-                    .collection("Worker location")
+                    .collection("AbujaOnline")
                     .document(FirebaseAuth.getInstance().getUid());
+
 
             locationRef.set(userLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
                 @Override
