@@ -1,6 +1,8 @@
 package com.example.zeetasupport;
 
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -160,7 +162,11 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
 
                         if (!isEmpty(phoneNumber.getText().toString())) {
                             //Initiate registration task
-                            registerNewEmail(mEmail.getText().toString(), mPassword.getText().toString(), phoneNumber.getText().toString());
+                            if (isInternetConnection()) {
+                                registerNewEmail(mEmail.getText().toString(), mPassword.getText().toString(), phoneNumber.getText().toString());
+                            } else {
+                                Toast.makeText(Enrollment.this, "Please check your internet connection", Toast.LENGTH_SHORT).show();
+                            }
                         } else {
                             Toast.makeText(Enrollment.this, "Please type your phone number", Toast.LENGTH_SHORT).show();
                         }
@@ -176,5 +182,11 @@ public class Enrollment extends AppCompatActivity implements View.OnClickListene
             }
         }
 
+    }
+
+    public boolean isInternetConnection() {
+
+        ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
     }
 }

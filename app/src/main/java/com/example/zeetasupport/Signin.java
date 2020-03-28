@@ -1,6 +1,8 @@
 package com.example.zeetasupport;
 
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -105,7 +107,13 @@ public class Signin extends AppCompatActivity implements
     @Override
     protected void onStart() {
         super.onStart();
-        FirebaseAuth.getInstance().addAuthStateListener(mAuthListener);
+        if (isInternetConnection()) {
+            FirebaseAuth.getInstance().addAuthStateListener(mAuthListener);
+        } else {
+            Toast.makeText(Signin.this, "Please check your internet connection!", Toast.LENGTH_SHORT).show();
+        }
+
+
     }
 
     @Override
@@ -146,6 +154,12 @@ public class Signin extends AppCompatActivity implements
         }
     }
 
+    public boolean isInternetConnection() {
+
+        ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
+    }
+
     private void showDialog() {
         mProgressBar.setVisibility(View.VISIBLE);
         Intent intent = new Intent(Signin.this, MapActivity.class);
@@ -175,7 +189,11 @@ public class Signin extends AppCompatActivity implements
             }
 
             case R.id.sign_in_button: {
-                signIn();
+                if (isInternetConnection()) {
+                    signIn();
+                } else {
+                    Toast.makeText(Signin.this, "Please check your internet connection!", Toast.LENGTH_SHORT).show();
+                }
                 break;
             }
         }

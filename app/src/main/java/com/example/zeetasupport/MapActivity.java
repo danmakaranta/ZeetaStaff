@@ -137,13 +137,27 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
     //listen for a request
     DocumentReference clientRequest;
+    DocumentReference acceptanceStatus;
     private Handler handler;
+    boolean requestAccepted = false;
+
+    //for adding a custom marker, in Zeeta's case its a sign of a worker going in the direction
+    private BitmapDescriptor bitmapDescriptorFromVector(Context context, int vectorResId) {
+
+        Drawable vectorDrawable = ContextCompat.getDrawable(context, vectorResId);
+        vectorDrawable.setBounds(0, 0, vectorDrawable.getIntrinsicWidth(), vectorDrawable.getIntrinsicHeight());
+        Bitmap bitmap = Bitmap.createBitmap(vectorDrawable.getIntrinsicWidth(), vectorDrawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        vectorDrawable.draw(canvas);
+        return BitmapDescriptorFactory.fromBitmap(bitmap);
+    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         Log.d(TAG, "onMapReady: map is ready here");
         //Toast.makeText(this, "Map is ready", Toast.LENGTH_SHORT).show();
         mMap = googleMap;
+        getDeviceLocation();
 
         if (mLocationPermissionGranted) {
             //getDeviceLocation();
@@ -156,22 +170,11 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
     }
 
-    //for adding a custom marker, in Zeeta's case its a sign of a worker going in the direction
-    private BitmapDescriptor bitmapDescriptorFromVector(Context context, int vectorResId){
-
-        Drawable vectorDrawable = ContextCompat.getDrawable(context, vectorResId);
-        vectorDrawable.setBounds(0,0,vectorDrawable.getIntrinsicWidth(),vectorDrawable.getIntrinsicHeight());
-        Bitmap bitmap = Bitmap.createBitmap(vectorDrawable.getIntrinsicWidth(),vectorDrawable.getIntrinsicHeight(),Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        vectorDrawable.draw(canvas);
-        return BitmapDescriptorFactory.fromBitmap(bitmap);
-    }
-
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
+        getDeviceLocation();
 
         staffID = FirebaseAuth.getInstance().getUid();
 
@@ -187,14 +190,13 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
         serviceIntent = new Intent(MapActivity.this, LocationService.class);
 
-        mDb = FirebaseFirestore.getInstance();
 
+        mDb = FirebaseFirestore.getInstance();
 
         ringtone.setStreamType(AudioManager.STREAM_RING);
         clientRequest = FirebaseFirestore.getInstance()
                 .collection("Users")
                 .document(FirebaseAuth.getInstance().getUid()).collection("Request").document("ongoing");
-
 
 
         markerPinned = false;
@@ -235,6 +237,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             @Override
             public void onClick(View v) {
                 mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
+
 
                 if (online_status) {
                     online_status = false;
@@ -283,11 +286,16 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                 Log.w(TAG, "Stop listening and clear any outstanding data.");
             }
         });
+        requestAccepted = false;
     }
 
     private void listenForRequest() {
 
         stopListenningForRequest();
+
+        if (!requestAccepted) {
+
+        }
 
         clientRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
             @Override
@@ -304,7 +312,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                     // Toast.makeText(MapActivity.this, "You have a request", Toast.LENGTH_SHORT).show();
                     ringtone.play();
 
-
                     final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
 
                     builder.setMessage("You have an incoming request. Do you want to accept it?")
@@ -312,8 +319,10 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                             .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                                 public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
                                     //do whatever you want down here!!!!
+                                    acceptRequest();
                                     ringtone.stop();
                                     dialog.dismiss();
+
                                 }
                             })
                             .setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -334,6 +343,8 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                     final AlertDialog alert = builder.create();
                     alert.setTitle("Incoming request");
                     alert.setIcon(R.drawable.zeetasample);
+
+                    //alert.setContentView(R.layout.service_provider);
                     alert.show();
 
                 } else {
@@ -342,6 +353,16 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             }
         });
     }
+
+    private void acceptRequest() {
+
+        acceptanceStatus = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(FirebaseAuth.getInstance().getUid()).collection("Request").document("ongoing");
+        acceptanceStatus.update("accepted", "Accepted");
+
+    }
+
 
     private void deleteOnlinePresence(String id) {
         Log.d(TAG, "deleteOnlinePresence: called.");
@@ -684,7 +705,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             return true;
         } else if (GoogleApiAvailability.getInstance().isUserResolvableError(available)) {
             //an error occured but we can resolve it
-            Log.d(TAG, "isServicesOk: an error occured but we can fix it");
+            Log.d(TAG, "isServicesOk: an error occurred but we can fix it");
 
             Dialog dialog = GoogleApiAvailability.getInstance().getErrorDialog(MapActivity.this, available, ERROR_DIALOG_REQUEST);
             dialog.show();
@@ -716,6 +737,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                     @Override
                     public void onComplete(@NonNull Task<Location> task) {
                         if (task.isSuccessful()) {
+
                             Log.d(TAG, "onComplete: Location found");
                             currentLocation = task.getResult();
                             //move camera to current location on map

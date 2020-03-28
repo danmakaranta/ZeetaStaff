@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Zeeta</string>
+    <string name="app_name">Zeeta Support</string>
     <string name="google_maps_api_key">AIzaSyDtZoloBYNpnid7QJG_3xzm-Skay3S0oBs</string>
     <string name="prompt_email">Email</string>
     <string name="prompt_password">Password</string>
