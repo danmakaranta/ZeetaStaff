@@ -41,22 +41,23 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
     implementation 'com.android.support:multidex:1.0.3'
-    implementation "com.google.android.gms:play-services-base:17.1.0"
-    implementation 'com.google.maps.android:android-maps-utils:0.5'
-    implementation 'com.google.firebase:firebase-firestore:21.4.0'
+    implementation "com.google.android.gms:play-services-base:17.2.1"
+    implementation 'com.google.maps.android:android-maps-utils:0.6.2'
+    implementation 'com.google.firebase:firebase-firestore:21.4.1'
     implementation 'com.google.android.gms:play-services-maps:17.0.0'
     // Google Maps Services (needed for directions)
-    implementation 'com.google.maps:google-maps-services:0.2.9'
-    implementation 'org.slf4j:slf4j-nop:1.7.25'
+    implementation 'com.google.maps:google-maps-services:0.11.0'
+    implementation 'org.slf4j:slf4j-nop:1.7.30'
     implementation 'com.google.android.gms:play-services-location:17.0.0'
-    implementation 'com.google.firebase:firebase-auth:19.2.0'
+    implementation 'com.google.firebase:firebase-auth:19.3.0'
+    implementation 'com.android.support:recyclerview-v7:29.0.2'
 
     def nav_version = "2.2.0"
 
     // Java language implementation
     implementation "androidx.navigation:navigation-fragment:$nav_version"
     implementation "androidx.navigation:navigation-ui:$nav_version"
-    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'com.google.android.material:material:1.1.0'
 
 }
 apply plugin: 'com.google.gms.google-services'
