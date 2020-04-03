@@ -12,10 +12,12 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 import android.media.AudioManager;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
+import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -80,6 +82,7 @@ import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
@@ -87,7 +90,7 @@ import androidx.fragment.app.FragmentActivity;
 import static com.example.zeetasupport.util.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
 
 
-public class MapActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnPolylineClickListener {
+public class MapActivity extends FragmentActivity implements LocationListener, OnMapReadyCallback, GoogleMap.OnPolylineClickListener {
 
     private static final String TAG = "MapActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
@@ -140,6 +143,8 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     DocumentReference acceptanceStatus;
     private Handler handler;
     boolean requestAccepted = false;
+    private int connects;
+    private int numConnect;
 
     //for adding a custom marker, in Zeeta's case its a sign of a worker going in the direction
     private BitmapDescriptor bitmapDescriptorFromVector(Context context, int vectorResId) {
@@ -152,15 +157,25 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
+    public static int safeLongToInt(long l) {
+        if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException
+                    (l + " cannot be cast to int without changing its value.");
+        }
+        return (int) l;
+    }
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
         Log.d(TAG, "onMapReady: map is ready here");
         //Toast.makeText(this, "Map is ready", Toast.LENGTH_SHORT).show();
         mMap = googleMap;
-        getDeviceLocation();
+        mMap.setPadding(0, 0, 0, 16);
+
+        //getDeviceLocation();
 
         if (mLocationPermissionGranted) {
-            //getDeviceLocation();
+            getDeviceLocation();
           /*  mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(true);// remove the set location button from the screen*/
             init();
@@ -181,15 +196,17 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference(getProfession()).child("ONLINE");
 
         geoFire = new GeoFire(ref);
-
-        online_status = false;
-        tempButton = findViewById(R.id.change_btn);
         connect = findViewById(R.id.connect_view);
+        online_status = false;
+        numConnect = getConnect();
+        //numConnect = 1;
+        tempButton = findViewById(R.id.change_btn);
+
+
         ringtone = RingtoneManager.getRingtone(getApplicationContext(), alert);
         handler = new Handler();
 
         serviceIntent = new Intent(MapActivity.this, LocationService.class);
-
 
         mDb = FirebaseFirestore.getInstance();
 
@@ -244,6 +261,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                     tempButton.setText("Go online");
                     tempButton.setBackgroundColor(getResources().getColor(R.color.green1));
                     connect.setVisibility(View.VISIBLE);
+                    connect.setText("Connects: " + numConnect);
                     //stopLocationUpdates();
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -253,26 +271,55 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                             //stopLocationUpdates();
                             Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
                             deleteOnlinePresence(FirebaseAuth.getInstance().getUid());
-
+                            numConnect = getConnect();
+                            connect.findViewById(R.id.connect_view);
+                            String msg = "Connects: " + numConnect;
+                            connect.setText(msg);
+                            connect.invalidate();
                             stopListenningForRequest();
+
                         }
                     }
 
                 } else {
 
-                    //since user has chosen to be online, track current location
-                    //startUserLocationsRunnable();
-                    createOnlinePresence();
-                    listenForRequest();
-                    startLocationService();
-                    online_status = true;
-                    connect.setVisibility(View.GONE);
-                    tempButton.setText("Go offline");
-                    tempButton.setBackgroundColor(getResources().getColor(R.color.red3));
+                    if (numConnect >= 1) {
+                        startLocationService();
+                        createOnlinePresence();
+                        listenForRequest();
 
-                    Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
+                        online_status = true;
+                        connect.setVisibility(View.GONE);
+                        tempButton.setText("Go offline");
+                        tempButton.setBackgroundColor(getResources().getColor(R.color.red3));
+                        Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
+
+                    } else {
+
+                        final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
+
+                        builder.setMessage("You have 0 connects, you need to purchase connect and try again, Do you want to buy?")
+                                .setCancelable(true)
+                                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                                    public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+
+                                        buyConnect();
+                                        dialog.dismiss();
+
+                                    }
+                                })
+                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                                    public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+
+                                        dialog.dismiss();
+                                    }
+                                });
+
+                        final AlertDialog alert = builder.create();
+                        alert.setTitle("Low Connect!");
+                        alert.setIcon(R.drawable.zeetasample);
+                    }
                 }
-
             }
         });
         // init();
@@ -419,6 +466,9 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                 },
                 Looper.myLooper()
         ); // Looper.myLooper tells this to repeat forever until thread is destroyed
+    }
+
+    private void buyConnect() {
     }
 
 
@@ -724,36 +774,10 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         getDeviceLocation();
     }
 
+    public boolean isInternetConnection() {
 
-    private void getDeviceLocation() {
-        Log.d(TAG, "getDeviceLocation: getting the device current location");
-
-        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-
-        try {
-            if (mLocationPermissionGranted) {// check first to see if the permission is granted
-                Task<Location> location = mFusedLocationProviderClient.getLastLocation();
-                location.addOnCompleteListener(new OnCompleteListener<Location>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Location> task) {
-                        if (task.isSuccessful()) {
-
-                            Log.d(TAG, "onComplete: Location found");
-                            currentLocation = task.getResult();
-                            //move camera to current location on map
-                            moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
-                        } else {
-                            Log.d(TAG, "onComplete: current location null");
-                            Toast.makeText(MapActivity.this, "Could not get current location, make sure location is enagbled", Toast.LENGTH_SHORT).show();
-
-                        }
-                    }
-                });
-            }
-        } catch (SecurityException e) {
-            Log.d(TAG, "getDeviceLocation: SecurityException:" + e.getMessage());
-        }
-
+        ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
     }
 
     private void moveCamera(LatLng latlng, float zoom, String title) {
@@ -887,7 +911,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                 if (task.isSuccessful()) {
                     Location location = task.getResult();
                     Log.d(TAG, "about to set location and UID to database");
-
                     geoFire.setLocation(staffID, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
 
                         @Override
@@ -906,6 +929,80 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
         });
 
+    }
+
+    private void getDeviceLocation() {
+        Log.d(TAG, "getDeviceLocation: getting the device current location");
+
+
+        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
+
+        try {
+            if (mLocationPermissionGranted) {// check first to see if the permission is granted
+                Task<Location> location = mFusedLocationProviderClient.getLastLocation();
+                location.addOnCompleteListener(new OnCompleteListener<Location>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Location> task) {
+                        if (task.isSuccessful()) {
+                            if (location != null) {
+                                Log.d(TAG, "onComplete: Location found");
+                                currentLocation = task.getResult();
+                                //move camera to current location on map
+                                moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
+                            } else {
+
+                                return;
+                            }
+
+                        } else {
+                            Log.d(TAG, "onComplete: current location null");
+                            Toast.makeText(MapActivity.this, "Could not get current location, make sure location is enagbled", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }
+        } catch (SecurityException e) {
+            Log.d(TAG, "getDeviceLocation: SecurityException:" + e.getMessage());
+        }
+
+    }
+
+    public int getConnect() {
+
+        DocumentReference connectref = null;
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            connectref = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
+        }
+
+        connectref.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @RequiresApi(api = Build.VERSION_CODES.N)
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot doc = task.getResult();
+                    Long connectLong = (Long) doc.get("connects");
+                    if (connectLong == null) {
+                        Log.d(TAG, "No data found ");
+                    } else {
+                        String msg = "Connects: " + connectLong.toString();
+                        connect.setText(msg);
+
+                        connects = safeLongToInt(connectLong);
+                        numConnect = connects;
+                        Log.d(TAG, "Number of connects found: " + connects);
+                    }
+                }
+            }
+
+        });
+        String message = "Connects: " + connects;
+
+        // connect.setText(message);
+        return connects;
     }
 
     public String getProfession() {
@@ -969,6 +1066,26 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                 polylineData.getPolyline().setZIndex(0);
             }
         }
+
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
 
     }
 }

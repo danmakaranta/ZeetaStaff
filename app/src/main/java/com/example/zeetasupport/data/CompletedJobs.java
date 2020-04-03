@@ -2,14 +2,14 @@ package com.example.zeetasupport.data;
 
 import com.google.firebase.Timestamp;
 
-public class JobsInfo {
+public class CompletedJobs {
 
     private String name;
     private Double amountPaid;
     private Timestamp dateRendered;
     private String phoneNumber;
 
-    public JobsInfo(String name, Double amountPaid, Timestamp dateRendered, String phoneNumber) {
+    public CompletedJobs(String name, Double amountPaid, Timestamp dateRendered, String phoneNumber) {
         this.name = name;
         this.amountPaid = amountPaid;
         this.dateRendered = dateRendered;
@@ -47,4 +47,5 @@ public class JobsInfo {
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
+
 }

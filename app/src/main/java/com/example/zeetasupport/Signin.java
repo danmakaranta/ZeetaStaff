@@ -157,6 +157,7 @@ public class Signin extends AppCompatActivity implements
     public boolean isInternetConnection() {
 
         ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        assert connectivityManager != null;
         return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
     }
 
