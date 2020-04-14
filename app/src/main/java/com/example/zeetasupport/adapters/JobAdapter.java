@@ -1,7 +1,6 @@
 package com.example.zeetasupport.adapters;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,45 +32,44 @@ public class JobAdapter extends ArrayAdapter<JobsInfo> {
 
         View listItemView = convertView;
         if (listItemView == null) {
-
-            listItemView = LayoutInflater.from(getContext()).inflate(R.layout.jobs_list_items, parent, false);
+            listItemView = LayoutInflater.from(getContext()).inflate(R.layout.job_list_item, parent, false);
         }
 
         JobsInfo jobsInfo = getItem(position);
 
         // Find the TextView in the list_item.xml layout with the ID version_name
-        TextView nameTextView = (TextView) listItemView.findViewById(R.id.job_serviceRendered_name);
-        String nameTemp = "Service Rendered to: " + jobsInfo.getName();
+        TextView nameTextView = (TextView) listItemView.findViewById(R.id.job_client_name);
+        String nameTemp = "" + jobsInfo.getName();
         nameTextView.setText(nameTemp);
 
         // Find the TextView in the list_item.xml layout with the ID version_name
-        TextView amountpaidTextView = (TextView) listItemView.findViewById(R.id.job_serviceRendered_AmountPaid);
-        String amountPTemp = "Amount Paid: " + jobsInfo.getAmountPaid();
-        amountpaidTextView.setText(amountPTemp);
-
-        // Find the TextView in the list_item.xml layout with the ID version_name
-        TextView phoneNumberTextView = (TextView) listItemView.findViewById(R.id.job_serviceRendered_phoneNumber);
-        String phoneNum = "Phone number: " + jobsInfo.getPhoneNumber();
-        phoneNumberTextView.setText(phoneNum);
-
-        // Find the TextView in the list_item.xml layout with the ID version_name
-        TextView dateTextView = (TextView) listItemView.findViewById(R.id.job_serviceRendered_date);
-
+        TextView dateTextView = (TextView) listItemView.findViewById(R.id.job_date);
         Timestamp tp = jobsInfo.getDateRendered();
         Date dt = tp.toDate();
-        Log.d("JobsAdapter", "Date: " + dt);
+        dateTextView.setText("Date: " + dt);
 
+        TextView statusTextView = (TextView) listItemView.findViewById(R.id.job_status);
+        String status = jobsInfo.getStatus();
+        String statusTxt = "Status: " + jobsInfo.getStatus();
+        if (status.equalsIgnoreCase("Ongoing")) {
+            int colorStatus = ContextCompat.getColor(getContext(), R.color.red3);
+            statusTextView.setText(statusTxt);
+            statusTextView.setTextColor(colorStatus);
+        } else if (status.equalsIgnoreCase("Closed")) {
+            int colorStatus = ContextCompat.getColor(getContext(), R.color.orange1);
+            statusTextView.setTextColor(colorStatus);
+            statusTextView.setText(statusTxt);
+        } else {
+            int colorStatus = ContextCompat.getColor(getContext(), R.color.green1);
+            statusTextView.setTextColor(colorStatus);
+            statusTextView.setText(statusTxt);
+        }
 
-        String dateTemp = "Date Rendered: " + dt;
-        dateTextView.setText(dateTemp);
 
         //Refresh views
         nameTextView.invalidate();
-        amountpaidTextView.invalidate();
-        phoneNumberTextView.invalidate();
-        dateTextView.invalidate();
 
-        View textContainer = listItemView.findViewById(R.id.job_details_container);
+        View textContainer = listItemView.findViewById(R.id.job_list_container);
 
         // find the color
         int color = ContextCompat.getColor(getContext(), R.color.White);

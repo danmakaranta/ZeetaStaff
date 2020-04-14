@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.TextView;
 
 import com.example.zeetasupport.R;
 import com.example.zeetasupport.data.CompletedJobs;
@@ -28,28 +27,13 @@ public class CompletedJobsAdapter extends ArrayAdapter<CompletedJobs> {
         View listItemView = convertView;
         if (listItemView == null) {
 
-            listItemView = LayoutInflater.from(getContext()).inflate(R.layout.jobs_list_items, parent, false);
+            listItemView = LayoutInflater.from(getContext()).inflate(R.layout.jobs_list, parent, false);
         }
 
         CompletedJobs jobsInfo = getItem(position);
 
-        // Find the TextView in the list_item.xml layout with the ID version_name
-        TextView nameTextView = (TextView) listItemView.findViewById(R.id.job_serviceRendered_name);
-        nameTextView.setText("Service Rendered to: " + jobsInfo.getName());
 
-        // Find the TextView in the list_item.xml layout with the ID version_name
-        TextView amountpaidTextView = (TextView) listItemView.findViewById(R.id.job_serviceRendered_AmountPaid);
-        amountpaidTextView.setText("Amount Paid: " + jobsInfo.getAmountPaid());
-
-        // Find the TextView in the list_item.xml layout with the ID version_name
-        TextView phoneNumberTextView = (TextView) listItemView.findViewById(R.id.job_serviceRendered_phoneNumber);
-        phoneNumberTextView.setText("Phone number: " + jobsInfo.getPhoneNumber());
-
-        // Find the TextView in the list_item.xml layout with the ID version_name
-        TextView dateTextView = (TextView) listItemView.findViewById(R.id.job_serviceRendered_date);
-        dateTextView.setText("Date Rendered: " + jobsInfo.getDateRendered());
-
-        View textContainer = listItemView.findViewById(R.id.job_details_container);
+        View textContainer = listItemView.findViewById(R.id.job_list_container);
 
         // find the color
         int color = ContextCompat.getColor(getContext(), R.color.White);

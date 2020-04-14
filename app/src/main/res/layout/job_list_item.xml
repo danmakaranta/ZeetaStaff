@@ -5,48 +5,41 @@
     android:padding="16dp">
 
     <LinearLayout
-        android:id="@+id/job_details_container"
+        android:id="@+id/job_list_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/job_serviceRendered_name"
+            android:id="@+id/job_client_name"
             style="@style/TextAppearance.AppCompat.Title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="monospace"
             android:text="Service Rendered to: "
-            android:textSize="12sp" />
+            android:textSize="17sp"
+            android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/job_serviceRendered_AmountPaid"
-            style="@style/TextAppearance.AppCompat.Title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:text="Amount Paid: "
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/job_serviceRendered_phoneNumber"
-            style="@style/TextAppearance.AppCompat.Title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:text="Phone Number: "
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/job_serviceRendered_date"
+            android:id="@+id/job_date"
             style="@style/TextAppearance.AppCompat.Title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="monospace"
             android:text="Date: "
-            android:textSize="12sp" />
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/job_status"
+            style="@style/TextAppearance.AppCompat.Title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:text="Status: "
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
     </LinearLayout>
-
 
 </FrameLayout>

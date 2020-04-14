@@ -25,7 +25,11 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    packagingOptions {
+        pickFirst 'lib/armeabi-v7a/libassmidi.so'
+        pickFirst 'lib/x86/libassmidi.so'
 
+    }
 
 }
 
@@ -58,7 +62,9 @@ dependencies {
     implementation 'com.google.firebase:firebase-auth:19.3.0'
     implementation 'com.android.support:recyclerview-v7:29.0.2'
 
-    def nav_version = "2.2.0"
+   
+
+    def nav_version = "2.2.1"
 
     // Java language implementation
     implementation "androidx.navigation:navigation-fragment:$nav_version"

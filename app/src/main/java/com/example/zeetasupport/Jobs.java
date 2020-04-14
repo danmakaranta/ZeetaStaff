@@ -3,9 +3,13 @@ package com.example.zeetasupport;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -21,6 +25,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.GeoPoint;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
@@ -29,6 +34,7 @@ import java.util.List;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class Jobs extends AppCompatActivity {
@@ -37,21 +43,14 @@ public class Jobs extends AppCompatActivity {
     final ArrayList<CompletedJobs> completedjobsList = new ArrayList<CompletedJobs>();
     CollectionReference jobsOnCloud = FirebaseFirestore.getInstance()
             .collection("Users")
-            .document(FirebaseAuth.getInstance().getUid()).collection("Completed");
+            .document(FirebaseAuth.getInstance().getUid()).collection("JobData");
+    private String status;
 
-    public static int safeLongToInt(long l) {
-        if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException
-                    (l + " cannot be cast to int without changing its value.");
-        }
-        return (int) l;
-    }
-
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_jobs);
-
 
         //initialize and assign variables for the bottom navigation
         BottomNavigationView bottomNavigationView = findViewById(R.id.nav_view);
@@ -82,7 +81,19 @@ public class Jobs extends AppCompatActivity {
         } else {
             Toast.makeText(Jobs.this, "Please check your internet connection", Toast.LENGTH_LONG).show();
         }
+    }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        startActivity(new Intent(Jobs.this, MapActivity.class));
+        overridePendingTransition(0, 0);
     }
 
     private void populateJobList() {
@@ -94,21 +105,36 @@ public class Jobs extends AppCompatActivity {
 
                     for (QueryDocumentSnapshot document : task.getResult()) {
 
-                        String name = document.getData().get("name").toString();
-                        Timestamp date = (Timestamp) document.getData().get("date");
+                        String name = document.getData().get("clientName").toString();
+                        Timestamp date = (Timestamp) document.getData().get("timeStamp");
                         Long amount = (Long) document.getData().get("amountPaid");
+                        status = document.getData().get("status").toString();
                         assert amount != null;
                         Double amountPaid = amount.doubleValue();
-                        String phoneNumber = Objects.requireNonNull(document.getData().get("phoneNumber")).toString();
-                        Log.d("JobsActivity", document.getId() + " => " + name);
-                        Log.d("JobsActivity", document.getId() + " => " + date);
-                        Log.d("JobsActivity", document.getId() + " => " + amountPaid);
-                        Log.d("JobsActivity", document.getId() + " => " + phoneNumber);
-                        jobsList.add(new JobsInfo(name, amountPaid, date, phoneNumber));
-                        completedjobsList.add(new CompletedJobs(name, amountPaid, date, phoneNumber));
+                        String phoneNumber = Objects.requireNonNull(document.getData().get("clientPhone")).toString();
+                        Long hoursWorked = (Long) document.getData().get("hoursWorked");
+                        GeoPoint gp = (GeoPoint) document.getData().get("gp");
+                        String clientID = document.getData().get("clientID").toString();
+                        jobsList.add(new JobsInfo(name, amountPaid, date, phoneNumber, clientID, status, hoursWorked, gp));
                         ListAdapter myAdapter = new JobAdapter(Jobs.this, jobsList, 1);
                         ListView myListView = (ListView) findViewById(R.id.jobs_completed2);
+
                         myListView.setAdapter(myAdapter);
+
+                        myListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                            @Override
+                            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+                                JobsInfo tempjobsList = (JobsInfo) myListView.getItemAtPosition(position);
+                                Log.d("Jobs", "Testing on itemClick " + tempjobsList.getName());
+
+                                Log.d("HoursWorkedTest", "Testing Hours worked " + tempjobsList.getHoursWorked());
+
+                                Intent intent = new Intent(Jobs.this, Job_Information.class).putExtra("JobData", (Parcelable) tempjobsList);
+                                startActivity(intent);
+                                overridePendingTransition(0, 0);
+                            }
+                        });
                     }
                     if (docList.size() >= 1) {
 
@@ -122,10 +148,12 @@ public class Jobs extends AppCompatActivity {
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     public boolean isInternetConnection() {
 
         ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
+
     }
 
 }

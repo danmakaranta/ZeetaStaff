@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -31,6 +32,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.zeetasupport.data.JobData;
 import com.example.zeetasupport.models.PolylineData;
 import com.example.zeetasupport.models.User;
 import com.example.zeetasupport.models.WorkerLocation;
@@ -104,6 +106,10 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     //lets use Handler and runnable
     private Handler mHandler = new Handler();
     private Runnable mRunnable;
+
+    final String[] employeeName = new String[1];
+    final String[] employeeID = new String[1];
+    final String[] phoneNum = new String[1];
 
     Location currentLocation;
     Intent serviceIntent;
@@ -185,6 +191,26 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
     }
 
+    final GeoPoint[] clientGp = {null};
+    public LocationManager locationManager;
+    public Criteria criteria;
+
+    private void stopListenningForRequest() {
+        //not an option for now
+        clientRequest.delete().addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                Log.w(TAG, "Stop listening and clear any outstanding data.");
+            }
+        });
+        requestAccepted = false;
+    }
+
+    public String bestProvider;
+    DocumentReference jobData = null;
+    private String protemp = null;
+    private DatabaseReference ref = null;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -193,15 +219,12 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
         staffID = FirebaseAuth.getInstance().getUid();
 
-        DatabaseReference ref = FirebaseDatabase.getInstance().getReference(getProfession()).child("ONLINE");
 
-        geoFire = new GeoFire(ref);
         connect = findViewById(R.id.connect_view);
         online_status = false;
         numConnect = getConnect();
-        //numConnect = 1;
-        tempButton = findViewById(R.id.change_btn);
 
+        tempButton = findViewById(R.id.change_btn);
 
         ringtone = RingtoneManager.getRingtone(getApplicationContext(), alert);
         handler = new Handler();
@@ -222,7 +245,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                     .apiKey(getString(R.string.google_maps_api_key))
                     .build();
         }
-        getProfession();
+        protemp = getProfession();
 
 
         //initialize and assign variables for the bottom navigation
@@ -239,7 +262,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                     case R.id.jobs_button:
                         startActivity(new Intent(getApplicationContext(), Jobs.class));
                         overridePendingTransition(0, 0);
-                        //getUserLocations();// used it to test if the directions method: getuserlocations actually worked.
                         return true;
                     case R.id.dashboard_button:
                         startActivity(new Intent(getApplicationContext(), DashBoard.class));
@@ -251,98 +273,89 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         });
 
         tempButton.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.M)
             @Override
             public void onClick(View v) {
                 mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
 
+                if (isInternetConnection()) {
+                    if (online_status) {
+                        online_status = false;
+                        tempButton.setText("Go online");
+                        tempButton.setBackgroundColor(R.drawable.custom_button);
+                        tempButton.invalidate();
+                        connect.setVisibility(View.VISIBLE);
+                        connect.setText("Connects: " + numConnect);
+                        //stopLocationUpdates();
 
-                if (online_status) {
-                    online_status = false;
-                    tempButton.setText("Go online");
-                    tempButton.setBackgroundColor(getResources().getColor(R.color.green1));
-                    connect.setVisibility(View.VISIBLE);
-                    connect.setText("Connects: " + numConnect);
-                    //stopLocationUpdates();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            if (Looper.myLooper().isCurrentThread() || Looper.getMainLooper().isCurrentThread()) {
+                                stopService(serviceIntent);
+                                //stopLocationUpdates();
+                                Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
+                                deleteOnlinePresence(FirebaseAuth.getInstance().getUid());
+                                numConnect = getConnect();
+                                tempButton.setBackgroundColor(R.drawable.custom_button);
+                                tempButton.invalidate();
+                                connect.findViewById(R.id.connect_view);
+                                String msg = "Connects: " + numConnect;
+                                connect.setText(msg);
+                                connect.invalidate();
+                                stopListenningForRequest();
 
-                        if (Looper.myLooper().isCurrentThread() || Looper.getMainLooper().isCurrentThread()) {
-                            stopService(serviceIntent);
-                            //stopLocationUpdates();
-                            Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
-                            deleteOnlinePresence(FirebaseAuth.getInstance().getUid());
-                            numConnect = getConnect();
-                            connect.findViewById(R.id.connect_view);
-                            String msg = "Connects: " + numConnect;
-                            connect.setText(msg);
-                            connect.invalidate();
-                            stopListenningForRequest();
-
+                            }
                         }
-                    }
-
-                } else {
-
-                    if (numConnect >= 1) {
-                        startLocationService();
-                        createOnlinePresence();
-                        listenForRequest();
-
-                        online_status = true;
-                        connect.setVisibility(View.GONE);
-                        tempButton.setText("Go offline");
-                        tempButton.setBackgroundColor(getResources().getColor(R.color.red3));
-                        Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
 
                     } else {
 
-                        final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
+                        if (numConnect >= 1) {
+                            startLocationService();
+                            createOnlinePresence();
+                            listenForRequest();
+                            online_status = true;
+                            connect.setVisibility(View.GONE);
+                            tempButton.setText("Go offline");
+                            tempButton.setBackgroundColor(R.drawable.online_custom_button);
+                            Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
+                            tempButton.invalidate();
+                        } else {
 
-                        builder.setMessage("You have 0 connects, you need to purchase connect and try again, Do you want to buy?")
-                                .setCancelable(true)
-                                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                                    public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                            final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
 
-                                        buyConnect();
-                                        dialog.dismiss();
+                            builder.setMessage("You have 0 connects, you need to purchase connect and try again, Do you want to buy?")
+                                    .setCancelable(true)
+                                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                                        public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
 
-                                    }
-                                })
-                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                                    public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                                            buyConnect();
+                                            dialog.dismiss();
 
-                                        dialog.dismiss();
-                                    }
-                                });
+                                        }
+                                    })
+                                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                                        public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
 
-                        final AlertDialog alert = builder.create();
-                        alert.setTitle("Low Connect!");
-                        alert.setIcon(R.drawable.zeetasample);
+                                            dialog.dismiss();
+                                        }
+                                    });
+
+                            final AlertDialog alert = builder.create();
+                            alert.setTitle("Low Connect!");
+                            alert.setIcon(R.drawable.zeetasample);
+                        }
                     }
+                } else {
+                    Toast.makeText(getApplicationContext(), "Please check your internet connection!", Toast.LENGTH_LONG).show();
                 }
             }
         });
         // init();
     }
 
-    private void stopListenningForRequest() {
-        //not an option for now
-        clientRequest.delete().addOnCompleteListener(new OnCompleteListener<Void>() {
-            @Override
-            public void onComplete(@NonNull Task<Void> task) {
-                Log.w(TAG, "Stop listening and clear any outstanding data.");
-            }
-        });
-        requestAccepted = false;
-    }
-
     private void listenForRequest() {
 
         stopListenningForRequest();
-
-        if (!requestAccepted) {
-
-        }
 
         clientRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
             @Override
@@ -356,43 +369,39 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                 if (documentSnapshot != null && documentSnapshot.exists() && online_status) {
                     Log.d(TAG, "Current data: " + documentSnapshot.getData());
                     Log.d(TAG, "A change has been effected on this doc");
-                    // Toast.makeText(MapActivity.this, "You have a request", Toast.LENGTH_SHORT).show();
-                    ringtone.play();
+                    String change = documentSnapshot.get("accepted").toString();
+                    if (change.equalsIgnoreCase("awaiting")) {
+                        ringtone.play();
+                        final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
 
-                    final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
+                        builder.setMessage("You have an incoming request. Do you want to accept it?")
+                                .setCancelable(true)
+                                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                                    public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                                        //do whatever you want down here!!!!
+                                        acceptRequest();
+                                        ringtone.stop();
+                                        dialog.dismiss();
 
-                    builder.setMessage("You have an incoming request. Do you want to accept it?")
-                            .setCancelable(true)
-                            .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                                public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-                                    //do whatever you want down here!!!!
-                                    acceptRequest();
-                                    ringtone.stop();
-                                    dialog.dismiss();
+                                    }
+                                })
+                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                                    public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
 
-                                }
-                            })
-                            .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                                public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                                        declineRequest();
+                                        ringtone.stop();
+                                        dialog.dismiss();
+                                    }
+                                });
 
-                                    //clear the request
-                                    clientRequest.delete().addOnCompleteListener(new OnCompleteListener<Void>() {
-                                        @Override
-                                        public void onComplete(@NonNull Task<Void> task) {
-                                            Log.w(TAG, "Request not accepted, clear any outstanding request data.");
-                                        }
-                                    });
-                                    ringtone.stop();
-                                    dialog.dismiss();
-                                }
-                            });
+                        final AlertDialog alert = builder.create();
+                        alert.setTitle("Incoming request");
+                        alert.setIcon(R.drawable.zeetasample);
 
-                    final AlertDialog alert = builder.create();
-                    alert.setTitle("Incoming request");
-                    alert.setIcon(R.drawable.zeetasample);
+                        //alert.setContentView(R.layout.service_provider);
+                        alert.show();
 
-                    //alert.setContentView(R.layout.service_provider);
-                    alert.show();
+                    }
 
                 } else {
                     Log.d(TAG, "Current data: null");
@@ -401,13 +410,70 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         });
     }
 
-    private void acceptRequest() {
+    private void setJobData() {
+        final boolean[] result = new boolean[1];
 
+        acceptanceStatus = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(FirebaseAuth.getInstance().getUid()).collection("Request").document("ongoing");
+
+        acceptanceStatus.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                String ID = task.getResult().get("id").toString();
+                clientGp[0] = task.getResult().getGeoPoint("geoPoint");
+                employeeID[0] = ID;
+                Log.d("setJobData:", "This is the ID :" + ID);
+                DocumentReference employeeN = FirebaseFirestore.getInstance()
+                        .collection("Customers")
+                        .document(employeeID[0]);
+                employeeN.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        String nameTemp = task.getResult().get("name").toString();
+                        phoneNum[0] = task.getResult().get("phoneNumber").toString();
+                        employeeName[0] = nameTemp;
+                        Log.d("setJobData:", "This is the name :" + nameTemp);
+                        setJobDataOnCloud();
+                        result[0] = true;
+                    }
+                });
+
+            }
+        });
+    }
+
+    private void setJobDataOnCloud() {
+        jobData = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(FirebaseAuth.getInstance().getUid()).collection("JobData").document(employeeID[0]);
+        jobData.set(new JobData(employeeID[0], employeeName[0], phoneNum[0], "Ongoing", (long) 0, null, clientGp[0], (long) 0)).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                Log.d("setJobData", "Job data set");
+            }
+        });
+        //reset the variables for next request
+        jobData = null;
+        employeeName[0] = null;
+        employeeID[0] = null;
+        phoneNum[0] = null;
+    }
+
+    private void acceptRequest() {
+        setJobData();
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
                 .document(FirebaseAuth.getInstance().getUid()).collection("Request").document("ongoing");
         acceptanceStatus.update("accepted", "Accepted");
 
+    }
+
+    private void declineRequest() {
+        acceptanceStatus = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(FirebaseAuth.getInstance().getUid()).collection("Request").document("ongoing");
+        acceptanceStatus.update("accepted", "Declined");
     }
 
 
@@ -436,7 +502,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         LocationRequest mLocationRequestHighAccuracy = new LocationRequest();
         mLocationRequestHighAccuracy.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         mLocationRequestHighAccuracy.setInterval(LOCATION_UPDATE_INTERVAL2);
-        //mLocationRequestHighAccuracy.setFastestInterval(FASTEST_INTERVAL);
 
 
         // new Google API SDK v11 uses getFusedLocationProviderClient(this)
@@ -693,10 +758,9 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         super.onResume();
         if (isLocationServiceRunning()) {
             tempButton.setText("Go offline");
-            tempButton.setBackgroundColor(getResources().getColor(R.color.red3));
+            tempButton.setBackgroundColor(R.drawable.online_custom_button);
             connect.setVisibility(View.GONE);
             online_status = true;
-
         }
 
 
@@ -774,10 +838,12 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         getDeviceLocation();
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     public boolean isInternetConnection() {
 
         ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
+
     }
 
     private void moveCamera(LatLng latlng, float zoom, String title) {
@@ -785,7 +851,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
         //create a marker to drop pin at the location
         MarkerOptions options = new MarkerOptions().position(latlng);
-
+        options.title("You");
 
         if (markerPinned) {
             mMap.addMarker(options.position(latlng)).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
@@ -905,6 +971,12 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
     public void createOnlinePresence() {
 
+        for (; protemp.length() < 2; ) {
+            protemp = getProfession();
+            ref = FirebaseDatabase.getInstance().getReference("ONLINE").child(protemp);
+            geoFire = new GeoFire(ref);
+        }
+
         mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
             @Override
             public void onComplete(@NonNull Task<android.location.Location> task) {
@@ -932,34 +1004,45 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     }
 
     private void getDeviceLocation() {
+        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        criteria = new Criteria();
+        bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        locationManager.requestLocationUpdates(bestProvider, 10000, 0, this);
+
         Log.d(TAG, "getDeviceLocation: getting the device current location");
 
 
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
-
         try {
             if (mLocationPermissionGranted) {// check first to see if the permission is granted
-                Task<Location> location = mFusedLocationProviderClient.getLastLocation();
-                location.addOnCompleteListener(new OnCompleteListener<Location>() {
+                mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
+                mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
                     @Override
-                    public void onComplete(@NonNull Task<Location> task) {
+                    public void onComplete(@NonNull Task<android.location.Location> task) {
                         if (task.isSuccessful()) {
-                            if (location != null) {
-                                Log.d(TAG, "onComplete: Location found");
-                                currentLocation = task.getResult();
-                                //move camera to current location on map
+                            Location location = task.getResult();
+                            currentLocation = location;
+                            Log.d(TAG, "about to set location and UID to database");
+                            //move camera to current location on map
+                            if (currentLocation != null) {
                                 moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
-                            } else {
-
-                                return;
                             }
 
-                        } else {
-                            Log.d(TAG, "onComplete: current location null");
-                            Toast.makeText(MapActivity.this, "Could not get current location, make sure location is enagbled", Toast.LENGTH_SHORT).show();
                         }
                     }
+
                 });
             }
         } catch (SecurityException e) {

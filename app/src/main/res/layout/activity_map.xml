@@ -12,7 +12,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         tools:context=".MapsActivity">
-
     </fragment>
 
 
@@ -20,36 +19,19 @@
         android:id="@+id/relLayout1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+
         android:layout_marginLeft="10dp"
         android:layout_marginTop="10dp"
         android:layout_alignParentBottom="true"
         android:layout_marginRight="10dp"
-        android:layout_marginBottom="10dp"
-        android:background="@drawable/white_boarder">
-
-        <ImageButton
-            android:id="@+id/btn_full_screen_map"
-            android:layout_width="35dp"
-            android:layout_height="35dp"
-            android:layout_above="@id/info_tab"
-            android:layout_alignParentEnd="true"
-            android:layout_alignParentRight="true"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="10dp"
-            android:layout_marginRight="10dp"
-            android:background="@color/colorAccent"
-            android:contentDescription="@string/screen_expansion_button"
-            android:visibility="visible"
-            app:srcCompat="@drawable/ic_full_screen_black_24dp" />
-
+        android:layout_marginBottom="10dp">
 
         <RelativeLayout
             android:id="@+id/info_tab"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/connect_online_view"
             android:visibility="visible">
-
-
             <Button
                 android:id="@+id/change_btn"
                 android:layout_width="match_parent"
@@ -57,9 +39,10 @@
                 android:layout_marginLeft="5dp"
                 android:layout_marginTop="5dp"
                 android:layout_marginRight="5dp"
-                android:background="@color/green1"
+                android:background="@drawable/custom_button"
                 android:padding="5dp"
                 android:text="@string/go_live"
+                android:textColor="#FFFFFF"
                 android:textSize="20sp" />
 
 
@@ -71,7 +54,8 @@
                 android:layout_marginLeft="5dp"
                 android:layout_marginTop="5dp"
                 android:layout_marginRight="5dp"
-                android:background="@color/green1"
+                android:layout_marginBottom="5dp"
+                android:background="@drawable/connect_online_view"
                 android:padding="5dp"
                 android:text="@string/connects"
                 android:textAlignment="center"
@@ -80,25 +64,22 @@
                 android:textStyle="bold" />
 
 
-            <com.google.android.material.bottomnavigation.BottomNavigationView
-                android:id="@+id/nav_view"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/connect_view"
-                android:layout_marginStart="0dp"
-                android:layout_marginEnd="0dp"
-                android:background="?android:attr/windowBackground"
-                app:itemIconTint="@color/green1"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintLeft_toLeftOf="parent"
-                app:layout_constraintRight_toRightOf="parent"
-                app:menu="@menu/bottom_nav" />
-
-
         </RelativeLayout>
 
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/nav_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/info_tab"
+            android:layout_marginStart="0dp"
+            android:layout_marginEnd="0dp"
+            android:background="@drawable/connect_online_view"
+            app:itemIconTint="#65BDBD"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:menu="@menu/bottom_nav" />
 
     </RelativeLayout>
-
 
 </RelativeLayout>

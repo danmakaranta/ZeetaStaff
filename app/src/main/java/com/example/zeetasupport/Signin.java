@@ -3,6 +3,7 @@ package com.example.zeetasupport;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -24,6 +25,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import static android.text.TextUtils.isEmpty;
@@ -104,15 +106,16 @@ public class Signin extends AppCompatActivity implements
         };
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onStart() {
         super.onStart();
+
         if (isInternetConnection()) {
             FirebaseAuth.getInstance().addAuthStateListener(mAuthListener);
         } else {
             Toast.makeText(Signin.this, "Please check your internet connection!", Toast.LENGTH_SHORT).show();
         }
-
 
     }
 
@@ -154,11 +157,12 @@ public class Signin extends AppCompatActivity implements
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     public boolean isInternetConnection() {
 
         ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        assert connectivityManager != null;
         return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
+
     }
 
     private void showDialog() {
@@ -179,6 +183,7 @@ public class Signin extends AppCompatActivity implements
         this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     public void onClick(View v) {
 
