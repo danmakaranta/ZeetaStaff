@@ -9,6 +9,17 @@ import com.google.firebase.firestore.ServerTimestamp;
 import java.util.Date;
 
 public class JobData implements Parcelable {
+
+    String clientID;
+    String clientName;
+    String clientPhone;
+    String status;
+    Long amountPaid;
+    GeoPoint gp;
+    Long hoursWorked;
+    private @ServerTimestamp
+    Date timeStamp;
+
     public static final Creator<JobData> CREATOR = new Creator<JobData>() {
         @Override
         public JobData createFromParcel(Parcel in) {
@@ -20,15 +31,19 @@ public class JobData implements Parcelable {
             return new JobData[size];
         }
     };
-    String clientID;
-    String clientName;
-    String clientPhone;
-    String status;
-    Long amountPaid;
-    GeoPoint gp;
-    Long hoursWorked;
-    private @ServerTimestamp
-    Date timeStamp;
+    private boolean started;
+
+    public JobData(String clientID, String clientName, String clientPhone, String status, Long amountPaid, Date timeStamp, GeoPoint gp, Long hoursWorked, boolean started) {
+        this.clientID = clientID;
+        this.clientName = clientName;
+        this.clientPhone = clientPhone;
+        this.status = status;
+        this.amountPaid = amountPaid;
+        this.gp = gp;
+        this.hoursWorked = hoursWorked;
+        this.timeStamp = timeStamp;
+        this.started = started;
+    }
 
     public JobData(String clientID, String clientName, String clientPhone, String status, Long amountPaid, Date timeStamp, GeoPoint gp, Long hoursWorked) {
         this.clientID = clientID;
@@ -41,30 +56,30 @@ public class JobData implements Parcelable {
         this.timeStamp = timeStamp;
     }
 
-    public JobData(String clientID, String clientName, String clientPhone, String status, Long amountPaid, Date timeStamp, GeoPoint gp) {
-        this.clientID = clientID;
-        this.clientName = clientName;
-        this.clientPhone = clientPhone;
-        this.status = status;
-        this.amountPaid = amountPaid;
-        this.gp = gp;
-        this.timeStamp = timeStamp;
-    }
-
-    public JobData(String clientID, String clientName, String clientPhone, String status, Long amountPaid, Date timeStamp) {
-        this.clientID = clientID;
-        this.clientName = clientName;
-        this.clientPhone = clientPhone;
-        this.status = status;
-        this.amountPaid = amountPaid;
-        this.timeStamp = timeStamp;
-    }
-
     protected JobData(Parcel in) {
+        clientID = in.readString();
+        clientName = in.readString();
+        clientPhone = in.readString();
+        status = in.readString();
+        if (in.readByte() == 0) {
+            amountPaid = null;
+        } else {
+            amountPaid = in.readLong();
+        }
+        if (in.readByte() == 0) {
+            hoursWorked = null;
+        } else {
+            hoursWorked = in.readLong();
+        }
+        started = in.readByte() != 0;
     }
 
-    public static Creator<JobData> getCREATOR() {
-        return CREATOR;
+    public boolean isStarted() {
+        return started;
+    }
+
+    public void setStarted(boolean started) {
+        this.started = started;
     }
 
     public Long getHoursWorked() {
@@ -138,5 +153,22 @@ public class JobData implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(clientID);
+        dest.writeString(clientName);
+        dest.writeString(clientPhone);
+        dest.writeString(status);
+        if (amountPaid == null) {
+            dest.writeByte((byte) 0);
+        } else {
+            dest.writeByte((byte) 1);
+            dest.writeLong(amountPaid);
+        }
+        if (hoursWorked == null) {
+            dest.writeByte((byte) 0);
+        } else {
+            dest.writeByte((byte) 1);
+            dest.writeLong(hoursWorked);
+        }
+        dest.writeByte((byte) (started ? 1 : 0));
     }
 }

@@ -1,6 +1,7 @@
 package com.example.zeetasupport;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -11,10 +12,12 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.zeetasupport.data.Invoice;
 import com.example.zeetasupport.data.JobsInfo;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -31,6 +34,7 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
+import com.google.firebase.firestore.ServerTimestamp;
 
 import java.util.Date;
 
@@ -45,6 +49,13 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
     private JobsInfo jobData;
     private GeoPoint geoPoint;
     private GoogleMap mMap;
+    DocumentReference hourlyRateOnCloud;
+    private double hourlyRate;
+    private String profession;
+    private String status;
+    private boolean started;
+    private long hoursWorkedLong;
+    private double amountPaidDouble;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -52,9 +63,11 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_job__information);
 
+
         jobData = (JobsInfo) getIntent().getExtras().getParcelable("JobData");
         assert jobData != null;
-        Log.d("JobInfor:", "job info testing" + jobData.getName());
+        started = jobData.isStarted();
+        Log.d("JobInfor:", "job info testing started" + jobData.isStarted());
 
         jobsOnCloud = FirebaseFirestore.getInstance()
                 .collection("Users")
@@ -101,6 +114,23 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         } else {
             Toast.makeText(Job_Information.this, "Please check your internet connection", Toast.LENGTH_LONG).show();
         }
+        hourlyRateOnCloud = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(FirebaseAuth.getInstance().getUid());
+        hourlyRateOnCloud.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot doc = task.getResult();
+                    Long hours = (Long) doc.get("hourlyRate");
+                    if (hours != null) {
+                        hourlyRate = hours.doubleValue();
+                    }
+                    profession = (String) doc.get("profession");
+                }
+            }
+        });
+
 
         TextView clientName = findViewById(R.id.clients_name);
         clientName.setText(jobData.getName());
@@ -110,8 +140,12 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
 
         TextView dateTemp = findViewById(R.id.clients_date);
         Timestamp tp = jobData.getDateRendered();
-        Date dt = tp.toDate();
-        dateTemp.setText("" + dt);
+        if (tp != null) {
+            Date dt = tp.toDate();
+            dateTemp.setText("" + dt);
+        } else {
+            dateTemp.setText("");
+        }
 
         TextView hoursWorked = findViewById(R.id.hours_worked);
         String hours = "" + jobData.getHoursWorked();
@@ -129,7 +163,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         TextView clsJob = findViewById(R.id.close_job);
         TextView creatInvoice = findViewById(R.id.create_invoice);
 
-        String status = jobData.getStatus();
+        status = jobData.getStatus();
         if (status.equalsIgnoreCase("Completed")) {
             getDirectionBtn.setEnabled(false);
             minusBtn.setEnabled(false);
@@ -144,6 +178,97 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
             startJobBtn.setEnabled(false);
             clsJob.setEnabled(false);
         }
+
+        if (started) {
+            startJobBtn.setEnabled(false);
+        } else {
+
+        }
+
+
+        plusBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                hoursWorkedLong = hoursWorkedLong + 1;
+                String val = "" + (int) hoursWorkedLong;
+                hoursWorked.setText(val);
+            }
+        });
+
+        minusBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (hoursWorkedLong <= 0) {
+
+                } else {
+                    hoursWorkedLong = hoursWorkedLong - 1;
+                    String val = "" + (int) hoursWorkedLong;
+                    hoursWorked.setText(val);
+                }
+            }
+        });
+
+
+        creatInvoice.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (status.equalsIgnoreCase("Closed")) {
+
+                    if (hoursWorkedLong >= 1) {
+                        // custom dialog
+                        final Dialog dialog = new Dialog(Job_Information.this);
+                        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+                        dialog.setContentView(R.layout.invoice);
+                        dialog.setTitle("Invoice");
+                        TextView textName = (TextView) dialog.findViewById(R.id.invoiceName);
+                        textName.setText(jobData.getName());
+                        TextView hoursTxt = (TextView) dialog.findViewById(R.id.invoice_hours);
+                        hoursTxt.setText(hoursWorked.getText());
+
+                        TextView textProf = (TextView) dialog.findViewById(R.id.job_done);
+                        textProf.setText("Service: " + profession);
+
+                        TextView hoursRateTxt = (TextView) dialog.findViewById(R.id.hours_rate);
+                        hoursRateTxt.setText("" + hourlyRate);
+
+                        double total = hourlyRate * Double.valueOf(hoursWorked.getText().toString());
+                        hoursWorkedLong = Long.parseLong(hoursWorked.getText().toString());
+                        amountPaidDouble = total;
+                        TextView totalEarned = (TextView) dialog.findViewById(R.id.total_earned);
+                        totalEarned.setText("" + total);
+
+                        Button btnYes = (Button) dialog.findViewById(R.id.send_invoice);
+                        Button btnNo = (Button) dialog.findViewById(R.id.cancel_invoice);
+                        dialog.show();
+
+                        btnYes.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                sendInvoice();
+                                dialog.dismiss();
+                            }
+                        });
+
+                        btnNo.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                dialog.dismiss();
+                            }
+                        });
+
+
+                    } else {
+                        Toast.makeText(Job_Information.this, "Hours worked cannot be Zero (0)", Toast.LENGTH_SHORT).show();
+                    }
+
+                } else {
+                    Toast.makeText(Job_Information.this, "You need to close the job first before creating an invoice", Toast.LENGTH_LONG).show();
+
+                }
+
+
+            }
+        });
 
         // set up listeners for the items on screen
         callBtn.setOnClickListener(new View.OnClickListener() {
@@ -164,21 +289,74 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
                 overridePendingTransition(0, 0);
             }
         });
+        final String[] status1 = {""};
 
         clsJob.setOnClickListener(new View.OnClickListener() {
+
             @Override
             public void onClick(View v) {
                 jobsOnCloud.update("status", "Closed").addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
                         Toast.makeText(Job_Information.this, "Job Closed. Please proceed to create and send invoice", Toast.LENGTH_LONG).show();
+                        status = "";
+                        status = "Closed";
                         startJobBtn.setEnabled(false);
                         clsJob.setEnabled(false);
+                    }
+                });
+
+            }
+
+        });
+
+
+        startJobBtn.setOnClickListener(new View.OnClickListener() {
+            private @ServerTimestamp
+            Timestamp timeStamp = Timestamp.now();
+
+            @Override
+            public void onClick(View v) {
+                jobsOnCloud.update("timeStamp", timeStamp).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        jobsOnCloud.update("started", true).addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                Toast.makeText(Job_Information.this, "Job Started!", Toast.LENGTH_LONG).show();
+                                startJobBtn.setEnabled(false);
+                            }
+                        });
                     }
                 });
             }
         });
 
+    }
+
+    private void sendInvoice() {
+        DocumentReference invoiceRef = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(FirebaseAuth.getInstance().getUid()).collection("Invoice").document(jobData.getClientID());
+
+        DocumentReference customersInvoice = FirebaseFirestore.getInstance()
+                .collection("Customers")
+                .document(jobData.getClientID()).collection("Invoice").document(FirebaseAuth.getInstance().getUid());
+
+        Invoice invoice = new Invoice(jobData.getClientID(), profession, hoursWorkedLong, amountPaidDouble, false);
+
+        invoiceRef.set(invoice).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                customersInvoice.set(invoice).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        Toast.makeText(Job_Information.this, "Invoice Sent to Client", Toast.LENGTH_LONG).show();
+                    }
+                });
+
+            }
+        });
     }
 
     @Override
@@ -193,7 +371,6 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
 
         ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
-
     }
 
     private void initMap() {// for initializing the map

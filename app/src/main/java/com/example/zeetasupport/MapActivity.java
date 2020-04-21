@@ -190,7 +190,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         mMap.setOnPolylineClickListener(this);
 
     }
-
     final GeoPoint[] clientGp = {null};
     public LocationManager locationManager;
     public Criteria criteria;
@@ -205,7 +204,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         });
         requestAccepted = false;
     }
-
     public String bestProvider;
     DocumentReference jobData = null;
     private String protemp = null;
@@ -447,7 +445,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         jobData = FirebaseFirestore.getInstance()
                 .collection("Users")
                 .document(FirebaseAuth.getInstance().getUid()).collection("JobData").document(employeeID[0]);
-        jobData.set(new JobData(employeeID[0], employeeName[0], phoneNum[0], "Ongoing", (long) 0, null, clientGp[0], (long) 0)).addOnCompleteListener(new OnCompleteListener<Void>() {
+        jobData.set(new JobData(employeeID[0], employeeName[0], phoneNum[0], "Ongoing", (long) 0, null, clientGp[0], (long) 0, false)).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 Log.d("setJobData", "Job data set");

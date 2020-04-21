@@ -13,6 +13,11 @@ public class JobsInfo implements Parcelable {
     private Double amountPaid;
     private Timestamp dateRendered;
     private String phoneNumber;
+
+    private String clientID;
+    private String status;
+    private Long hoursWorked;
+    private GeoPoint geoPoint;
     public static final Creator<JobsInfo> CREATOR = new Creator<JobsInfo>() {
         @Override
         public JobsInfo createFromParcel(Parcel in) {
@@ -24,10 +29,7 @@ public class JobsInfo implements Parcelable {
             return new JobsInfo[size];
         }
     };
-    private String clientID;
-    private String status;
-    private Long hoursWorked;
-    private GeoPoint geoPoint;
+    private boolean started;
 
     protected JobsInfo(Parcel in) {
         name = in.readString();
@@ -45,6 +47,19 @@ public class JobsInfo implements Parcelable {
         } else {
             hoursWorked = in.readLong();
         }
+        started = in.readByte() != 0;
+    }
+
+    public JobsInfo(String name, Double amountPaid, Timestamp dateRendered, String phoneNumber, String clientID, String status, Long hoursWorked, GeoPoint geoPoint, boolean started) {
+        this.name = name;
+        this.amountPaid = amountPaid;
+        this.dateRendered = dateRendered;
+        this.phoneNumber = phoneNumber;
+        this.clientID = clientID;
+        this.status = status;
+        this.hoursWorked = hoursWorked;
+        this.geoPoint = geoPoint;
+        this.started = started;
     }
 
     public JobsInfo(String name, Double amountPaid, Timestamp dateRendered, String phoneNumber, String clientID, String status, Long hoursWorked, GeoPoint geoPoint) {
@@ -58,15 +73,15 @@ public class JobsInfo implements Parcelable {
         this.geoPoint = geoPoint;
     }
 
-    public JobsInfo(String name, Double amountPaid, Timestamp dateRendered, String phoneNumber, String clientID, String status, Long hoursWorked) {
-        this.name = name;
-        this.amountPaid = amountPaid;
-        this.dateRendered = dateRendered;
-        this.phoneNumber = phoneNumber;
-        this.clientID = clientID;
-        this.status = status;
-        this.hoursWorked = hoursWorked;
+    public boolean isStarted() {
+        return started;
     }
+
+    public void setStarted(boolean started) {
+        this.started = started;
+    }
+
+
 
     public JobsInfo(String name, Double amountPaid, Timestamp dateRendered, String phoneNumber, String clientID, String status) {
         this.name = name;
@@ -148,6 +163,7 @@ public class JobsInfo implements Parcelable {
         this.phoneNumber = phoneNumber;
     }
 
+
     @Override
     public int describeContents() {
         return 0;
@@ -172,5 +188,6 @@ public class JobsInfo implements Parcelable {
             dest.writeByte((byte) 1);
             dest.writeLong(hoursWorked);
         }
+        dest.writeByte((byte) (started ? 1 : 0));
     }
 }

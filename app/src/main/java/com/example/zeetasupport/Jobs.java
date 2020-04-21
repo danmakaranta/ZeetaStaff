@@ -115,7 +115,9 @@ public class Jobs extends AppCompatActivity {
                         Long hoursWorked = (Long) document.getData().get("hoursWorked");
                         GeoPoint gp = (GeoPoint) document.getData().get("gp");
                         String clientID = document.getData().get("clientID").toString();
-                        jobsList.add(new JobsInfo(name, amountPaid, date, phoneNumber, clientID, status, hoursWorked, gp));
+                        String startedStr = Objects.requireNonNull(document.getData().get("started")).toString();
+                        boolean started = Boolean.parseBoolean(startedStr);
+                        jobsList.add(new JobsInfo(name, amountPaid, date, phoneNumber, clientID, status, hoursWorked, gp, started));
                         ListAdapter myAdapter = new JobAdapter(Jobs.this, jobsList, 1);
                         ListView myListView = (ListView) findViewById(R.id.jobs_completed2);
 

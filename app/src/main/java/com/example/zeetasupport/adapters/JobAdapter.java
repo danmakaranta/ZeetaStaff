@@ -45,8 +45,13 @@ public class JobAdapter extends ArrayAdapter<JobsInfo> {
         // Find the TextView in the list_item.xml layout with the ID version_name
         TextView dateTextView = (TextView) listItemView.findViewById(R.id.job_date);
         Timestamp tp = jobsInfo.getDateRendered();
-        Date dt = tp.toDate();
-        dateTextView.setText("Date: " + dt);
+        if (tp != null) {
+            Date dt = tp.toDate();
+            dateTextView.setText("Date: " + dt);
+        } else {
+            dateTextView.setText("Date: ");
+        }
+
 
         TextView statusTextView = (TextView) listItemView.findViewById(R.id.job_status);
         String status = jobsInfo.getStatus();
