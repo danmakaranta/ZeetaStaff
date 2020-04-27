@@ -43,6 +43,7 @@ public class Signin extends AppCompatActivity implements
     private ProgressBar mProgressBar;
 
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,7 +53,12 @@ public class Signin extends AppCompatActivity implements
         mPassword = findViewById(R.id.password);
         mProgressBar = findViewById(R.id.progressBar);
 
-        setupFirebaseAuth();
+        if (isInternetConnection()) {
+            setupFirebaseAuth();
+        } else {
+            Toast.makeText(Signin.this, "Please check your internet connection!", Toast.LENGTH_SHORT).show();
+        }
+
         findViewById(R.id.sign_in_button).setOnClickListener(this);
         findViewById(R.id.register_button).setOnClickListener(this);
 
@@ -170,7 +176,6 @@ public class Signin extends AppCompatActivity implements
         Intent intent = new Intent(Signin.this, MapActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
-
     }
 
     private void hideDialog() {

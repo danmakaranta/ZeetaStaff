@@ -144,7 +144,6 @@ public class Jobs extends AppCompatActivity {
                         Toast.makeText(Jobs.this, "You do not have previously executed jobs", Toast.LENGTH_LONG).show();
                     }
                 }
-
             }
         });
 
@@ -152,10 +151,9 @@ public class Jobs extends AppCompatActivity {
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     public boolean isInternetConnection() {
-
         ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
-
+        assert connectivityManager != null;
+        return Objects.requireNonNull(connectivityManager.getActiveNetworkInfo()).isConnectedOrConnecting();
     }
 
 }

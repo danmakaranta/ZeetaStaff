@@ -10,13 +10,13 @@ import java.util.Date;
 
 public class JobData implements Parcelable {
 
-    String clientID;
-    String clientName;
-    String clientPhone;
-    String status;
-    Long amountPaid;
+    private String clientID;
+    private String clientName;
+    private String clientPhone;
+    private String status;
+    private Long amountPaid;
     GeoPoint gp;
-    Long hoursWorked;
+    private Long hoursWorked;
     private @ServerTimestamp
     Date timeStamp;
 

@@ -173,17 +173,12 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        Log.d(TAG, "onMapReady: map is ready here");
-        //Toast.makeText(this, "Map is ready", Toast.LENGTH_SHORT).show();
+
         mMap = googleMap;
         mMap.setPadding(0, 0, 0, 16);
 
-        //getDeviceLocation();
-
         if (mLocationPermissionGranted) {
             getDeviceLocation();
-          /*  mMap.setMyLocationEnabled(true);
-            mMap.getUiSettings().setMyLocationButtonEnabled(true);// remove the set location button from the screen*/
             init();
         }
 
@@ -234,7 +229,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         ringtone.setStreamType(AudioManager.STREAM_RING);
         clientRequest = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(FirebaseAuth.getInstance().getUid()).collection("Request").document("ongoing");
+                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
 
 
         markerPinned = false;
@@ -321,14 +316,12 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
                             final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
 
-                            builder.setMessage("You have 0 connects, you need to purchase connect and try again, Do you want to buy?")
+                            builder.setMessage("You have 0 connects, you need to purchase connect and try again, Are you ready to buy?")
                                     .setCancelable(true)
                                     .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                                         public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-
                                             buyConnect();
                                             dialog.dismiss();
-
                                         }
                                     })
                                     .setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -380,7 +373,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                                         acceptRequest();
                                         ringtone.stop();
                                         dialog.dismiss();
-
                                     }
                                 })
                                 .setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -396,7 +388,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                         alert.setTitle("Incoming request");
                         alert.setIcon(R.drawable.zeetasample);
 
-                        //alert.setContentView(R.layout.service_provider);
                         alert.show();
 
                     }
@@ -413,7 +404,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(FirebaseAuth.getInstance().getUid()).collection("Request").document("ongoing");
+                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
 
         acceptanceStatus.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
@@ -431,7 +422,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                         String nameTemp = task.getResult().get("name").toString();
                         phoneNum[0] = task.getResult().get("phoneNumber").toString();
                         employeeName[0] = nameTemp;
-                        Log.d("setJobData:", "This is the name :" + nameTemp);
                         setJobDataOnCloud();
                         result[0] = true;
                     }
@@ -462,7 +452,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         setJobData();
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(FirebaseAuth.getInstance().getUid()).collection("Request").document("ongoing");
+                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
         acceptanceStatus.update("accepted", "Accepted");
 
     }
@@ -470,14 +460,12 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     private void declineRequest() {
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(FirebaseAuth.getInstance().getUid()).collection("Request").document("ongoing");
+                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
         acceptanceStatus.update("accepted", "Declined");
     }
 
 
     private void deleteOnlinePresence(String id) {
-        Log.d(TAG, "deleteOnlinePresence: called.");
-        Log.d(TAG, id);
         geoFire.removeLocation(id);
     }
 
@@ -967,6 +955,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         return false;
     }
 
+
     public void createOnlinePresence() {
 
         for (; protemp.length() < 2; ) {
@@ -999,6 +988,10 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
         });
 
+    }
+
+    private String getState() {
+        return "";
     }
 
     private void getDeviceLocation() {
