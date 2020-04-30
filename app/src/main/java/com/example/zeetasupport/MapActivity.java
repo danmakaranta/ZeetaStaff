@@ -22,6 +22,7 @@ import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -90,6 +91,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import static com.example.zeetasupport.util.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
+import static com.google.firebase.auth.FirebaseAuth.getInstance;
 
 
 public class MapActivity extends FragmentActivity implements LocationListener, OnMapReadyCallback, GoogleMap.OnPolylineClickListener {
@@ -144,6 +146,8 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
     Ringtone ringtone;
 
+    private String locality = "StateNotFound";
+
     //listen for a request
     DocumentReference clientRequest;
     DocumentReference acceptanceStatus;
@@ -151,6 +155,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     boolean requestAccepted = false;
     private int connects;
     private int numConnect;
+
 
     //for adding a custom marker, in Zeeta's case its a sign of a worker going in the direction
     private BitmapDescriptor bitmapDescriptorFromVector(Context context, int vectorResId) {
@@ -202,20 +207,42 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     public String bestProvider;
     DocumentReference jobData = null;
     private String protemp = null;
+    private String uID;
     private DatabaseReference ref = null;
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
-        getDeviceLocation();
 
-        staffID = FirebaseAuth.getInstance().getUid();
+
+        if (isInternetConnection()) {
+            new CountDownTimer(1000, 4000) {
+                @Override
+                public void onTick(long millisUntilFinished) {
+                    // do nothing 4s
+                    getDeviceLocation();
+                    staffID = getInstance().getUid();
+                    numConnect = getConnect();
+
+                }
+
+                @Override
+                public void onFinish() {
+                    // do something end times 1s
+                }
+
+            }.start();
+
+        } else {
+            Toast.makeText(this, "Please check that you are connected to the internet!", Toast.LENGTH_SHORT).show();
+        }
 
 
         connect = findViewById(R.id.connect_view);
         online_status = false;
-        numConnect = getConnect();
+
 
         tempButton = findViewById(R.id.change_btn);
 
@@ -287,7 +314,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                                 stopService(serviceIntent);
                                 //stopLocationUpdates();
                                 Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
-                                deleteOnlinePresence(FirebaseAuth.getInstance().getUid());
+                                deleteOnlinePresence(getInstance().getUid());
                                 numConnect = getConnect();
                                 tempButton.setBackgroundColor(R.drawable.custom_button);
                                 tempButton.invalidate();
@@ -404,7 +431,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
+                .document(Objects.requireNonNull(getInstance().getUid())).collection("Request").document("ongoing");
 
         acceptanceStatus.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
@@ -434,7 +461,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     private void setJobDataOnCloud() {
         jobData = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(FirebaseAuth.getInstance().getUid()).collection("JobData").document(employeeID[0]);
+                .document(getInstance().getUid()).collection("JobData").document(employeeID[0]);
         jobData.set(new JobData(employeeID[0], employeeName[0], phoneNum[0], "Ongoing", (long) 0, null, clientGp[0], (long) 0, false)).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
@@ -452,7 +479,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         setJobData();
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
+                .document(Objects.requireNonNull(getInstance().getUid())).collection("Request").document("ongoing");
         acceptanceStatus.update("accepted", "Accepted");
 
     }
@@ -460,7 +487,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     private void declineRequest() {
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
+                .document(Objects.requireNonNull(getInstance().getUid())).collection("Request").document("ongoing");
         acceptanceStatus.update("accepted", "Declined");
     }
 
@@ -528,7 +555,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         try {
             DocumentReference locationRef = FirebaseFirestore.getInstance()
                     .collection("AbujaOnline")
-                    .document(FirebaseAuth.getInstance().getUid());
+                    .document(getInstance().getUid());
 
             locationRef.set(userLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
                 @Override
@@ -586,7 +613,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         if (mWorkerLocation == null) {
             mWorkerLocation = new WorkerLocation();
             DocumentReference userRef = mDb.collection("Worker location")
-                    .document(FirebaseAuth.getInstance().getUid());
+                    .document(getInstance().getUid());
 
             userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                 @Override
@@ -960,7 +987,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
         for (; protemp.length() < 2; ) {
             protemp = getProfession();
-            ref = FirebaseDatabase.getInstance().getReference("ONLINE").child(protemp);
+            ref = FirebaseDatabase.getInstance().getReference(locality).child(protemp);
             geoFire = new GeoFire(ref);
         }
 
@@ -975,9 +1002,9 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                         @Override
                         public void onComplete(String key, DatabaseError error) {
                             if (error != null) {
-                                Log.d(TAG, "there was an error saving location to geofire server");
+                                Log.d(TAG, "there was an error saving location");
                             } else {
-                                Log.d(TAG, "Location saved successfully to geofire server");
+                                Log.d(TAG, "Location saved successfully");
                             }
                         }
                     });
@@ -1049,7 +1076,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             connectref = FirebaseFirestore.getInstance()
                     .collection("Users")
-                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
+                    .document(staffID);
         }
 
         connectref.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
@@ -1085,7 +1112,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             proffession = FirebaseFirestore.getInstance()
                     .collection("Users")
-                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
+                    .document(Objects.requireNonNull(getInstance().getUid()));
         }
 
 
@@ -1095,6 +1122,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                 if (task.isSuccessful()) {
                     DocumentSnapshot doc = task.getResult();
                     String aiki = (String) doc.get("profession");
+                    locality = (String) doc.get("state");
                     if (aiki == null) {
                         Log.d(TAG, "No data found ");
                     } else {

@@ -18,22 +18,25 @@
     <application
         android:name=".UserClient"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/zeetaicon2"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
+            android:name=".StartPage"
+            android:label="@string/title_activity_start_page"
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
             android:name=".Job_Information"
             android:label="@string/title_activity_job__information"
-            android:theme="@style/AppTheme.NoActionBar"></activity>
+            android:theme="@style/AppTheme.NoActionBar" />
         <activity android:name=".Jobs" />
         <activity android:name=".DashBoard" />
         <activity
             android:name=".Request"
             android:label="@string/title_activity_request"
             android:theme="@style/AppTheme.NoActionBar" />
-
         <activity
             android:name=".user_list_item"
             android:label="@string/title_activity_user_list_item"

@@ -10,6 +10,7 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.firebase.FirebaseApp;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -34,13 +35,14 @@ public class MainActivity extends AppCompatActivity {
         secondInit();
         intentThatCalled = getIntent();
         voice2text = intentThatCalled.getStringExtra("v2txt");
-
     }
 
 
     private void secondInit() {
-        Intent intent = new Intent(MainActivity.this, Signin.class);
+        FirebaseApp.initializeApp(this);
+        Intent intent = new Intent(MainActivity.this, StartPage.class);
         startActivity(intent);
+        overridePendingTransition(0, 0);
     }
 
 

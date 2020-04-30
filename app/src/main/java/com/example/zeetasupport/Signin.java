@@ -3,6 +3,7 @@ package com.example.zeetasupport;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -23,6 +24,8 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
+
+import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -139,17 +142,13 @@ public class Signin extends AppCompatActivity implements
                 && !isEmpty(mPassword.getText().toString())) {
             Log.d(TAG, "onClick: attempting to authenticate.");
             Toast.makeText(Signin.this, "Signing in...", Toast.LENGTH_SHORT).show();
-
-            //showDialog();
-
+            showDialog();
             FirebaseAuth.getInstance().signInWithEmailAndPassword(mEmail.getText().toString(),
                     mPassword.getText().toString())
                     .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
-
-                            showDialog();
-
+                            hideDialog();
                         }
                     }).addOnFailureListener(new OnFailureListener() {
                 @Override
@@ -165,10 +164,9 @@ public class Signin extends AppCompatActivity implements
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     public boolean isInternetConnection() {
-
         ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
-
+        assert connectivityManager != null;
+        return Objects.requireNonNull(connectivityManager.getActiveNetworkInfo()).isConnectedOrConnecting();
     }
 
     private void showDialog() {
@@ -194,8 +192,10 @@ public class Signin extends AppCompatActivity implements
 
         switch (v.getId()) {
             case R.id.register_button: {
-                Intent intent = new Intent(Signin.this, Enrollment.class);
-                startActivity(intent);
+                String url = "http://www.google.com";
+                Intent i = new Intent(Intent.ACTION_VIEW);
+                i.setData(Uri.parse(url));
+                startActivity(i);
                 break;
             }
 

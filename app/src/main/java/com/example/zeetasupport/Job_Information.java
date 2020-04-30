@@ -15,6 +15,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -71,18 +72,20 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
     private FusedLocationProviderClient mFusedLocationClient;
     private boolean mLocationPermissionGranted = false;
     private GeoApiContext mGeoApiContext;
+    private ProgressBar mProgressBar;
+
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_job__information);
-
+        mProgressBar = findViewById(R.id.progressBar2);
+        mProgressBar.setVisibility(View.INVISIBLE);
 
         jobData = (JobsInfo) getIntent().getExtras().getParcelable("JobData");
         assert jobData != null;
         started = jobData.isStarted();
-        Log.d("JobInfor:", "job info testing started" + jobData.isStarted());
 
         jobsOnCloud = FirebaseFirestore.getInstance()
                 .collection("Users")
@@ -181,6 +184,9 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         Button plusBtn = findViewById(R.id.add_hour);
         Button callBtn = findViewById(R.id.call_btn);
         Button startJobBtn = findViewById(R.id.start_job);
+        if (profession.equalsIgnoreCase("Taxi") || profession.equalsIgnoreCase("Trycycle(Keke)")) {
+            startJobBtn.setText("Start Journey");
+        }
         TextView reportTxt = findViewById(R.id.report_txt);
         TextView clsJob = findViewById(R.id.close_job);
         TextView creatInvoice = findViewById(R.id.create_invoice);
@@ -198,7 +204,6 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
             reportTxt.setEnabled(false);
             clientPhone.setText("");
         } else if (status.equalsIgnoreCase("Closed")) {
-
             startJobBtn.setEnabled(false);
             clsJob.setEnabled(false);
         }
@@ -206,7 +211,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         if (started) {
             startJobBtn.setEnabled(false);
         } else {
-
+            startJobBtn.setEnabled(true);
         }
 
         plusBtn.setOnClickListener(new View.OnClickListener() {
@@ -320,6 +325,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
             @Override
             public void onClick(View v) {
                 jobsOnCloud.update("status", "Closed").addOnCompleteListener(new OnCompleteListener<Void>() {
+
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
                         Toast.makeText(Job_Information.this, "Job Closed. Please proceed to create and send invoice", Toast.LENGTH_LONG).show();
@@ -327,6 +333,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
                         status = "Closed";
                         startJobBtn.setEnabled(false);
                         clsJob.setEnabled(false);
+                        hideDialog();
                     }
                 });
 
@@ -369,6 +376,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
     }
 
     private void sendInvoice() {
+        showDialog();
         DocumentReference spInvoice = FirebaseFirestore.getInstance()
                 .collection("Users")
                 .document(FirebaseAuth.getInstance().getUid()).collection("Invoice").document(jobData.getClientID());
@@ -386,6 +394,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
                         Toast.makeText(Job_Information.this, "Invoice Sent to Client", Toast.LENGTH_LONG).show();
+                        hideDialog();
                     }
                 });
 
@@ -399,6 +408,16 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
             }
         });
 
+    }
+
+    public void showDialog() {
+        mProgressBar.setVisibility(View.VISIBLE);
+    }
+
+    private void hideDialog() {
+        if (mProgressBar.getVisibility() == View.VISIBLE) {
+            mProgressBar.setVisibility(View.INVISIBLE);
+        }
     }
 
     @Override
