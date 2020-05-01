@@ -6,7 +6,6 @@ import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
-import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -96,6 +95,10 @@ public class Jobs extends AppCompatActivity {
         overridePendingTransition(0, 0);
     }
 
+    private void populateRideList() {
+
+    }
+
     private void populateJobList() {
         jobsOnCloud.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
@@ -128,9 +131,6 @@ public class Jobs extends AppCompatActivity {
                             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
                                 JobsInfo tempjobsList = (JobsInfo) myListView.getItemAtPosition(position);
-                                Log.d("Jobs", "Testing on itemClick " + tempjobsList.getName());
-
-                                Log.d("HoursWorkedTest", "Testing Hours worked " + tempjobsList.getHoursWorked());
 
                                 Intent intent = new Intent(Jobs.this, Job_Information.class).putExtra("JobData", (Parcelable) tempjobsList);
                                 startActivity(intent);

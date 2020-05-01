@@ -62,6 +62,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -72,6 +73,7 @@ import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.GeoPoint;
+import com.google.firebase.firestore.ServerTimestamp;
 import com.google.maps.DirectionsApiRequest;
 import com.google.maps.GeoApiContext;
 import com.google.maps.PendingResult;
@@ -136,6 +138,13 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     private String staffID; // AUTHENTICATED ID
     private ArrayList<WorkerLocation> mUserLocations = new ArrayList<>();
     private GeoApiContext mGeoApiContext;
+
+    //for a taxi or trycycle driver
+    private GeoPoint pickUplocation, destination;
+    private long distanceCovered;
+    private String customerID, driverphoneNumber, serviceproviderid, driverName;
+    private double amountForJourney;
+    private boolean acceptedRideRequest;
 
 
     private String staffOccupation = "";
@@ -209,6 +218,8 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     private String protemp = null;
     private String uID;
     private DatabaseReference ref = null;
+    private @ServerTimestamp
+    Timestamp timeStamp;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -254,9 +265,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         mDb = FirebaseFirestore.getInstance();
 
         ringtone.setStreamType(AudioManager.STREAM_RING);
-        clientRequest = FirebaseFirestore.getInstance()
-                .collection("Users")
-                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
+        protemp = getProfession();
 
 
         markerPinned = false;
@@ -265,7 +274,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                     .apiKey(getString(R.string.google_maps_api_key))
                     .build();
         }
-        protemp = getProfession();
+
 
 
         //initialize and assign variables for the bottom navigation
@@ -314,10 +323,9 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                                 stopService(serviceIntent);
                                 //stopLocationUpdates();
                                 Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
-                                deleteOnlinePresence(getInstance().getUid());
+                                deleteOnlinePresence(FirebaseAuth.getInstance().getUid());
                                 numConnect = getConnect();
                                 tempButton.setBackgroundColor(R.drawable.custom_button);
-                                tempButton.invalidate();
                                 connect.findViewById(R.id.connect_view);
                                 String msg = "Connects: " + numConnect;
                                 connect.setText(msg);
@@ -332,8 +340,13 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                         if (numConnect >= 1) {
                             startLocationService();
                             createOnlinePresence();
-                            listenForRequest();
                             online_status = true;
+                            if (getProfession().equalsIgnoreCase("Taxi") || getProfession().equalsIgnoreCase("Trycycle(Keke)")) {
+                                listenForRideRequest();
+                            } else {
+                                listenForJobRequest();
+                            }
+
                             connect.setVisibility(View.GONE);
                             tempButton.setText("Go offline");
                             tempButton.setBackgroundColor(R.drawable.online_custom_button);
@@ -360,7 +373,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
                             final AlertDialog alert = builder.create();
                             alert.setTitle("Low Connect!");
-                            alert.setIcon(R.drawable.zeetasample);
+                            alert.setIcon(R.drawable.zeetaicon);
                         }
                     }
                 } else {
@@ -368,10 +381,71 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                 }
             }
         });
-        // init();
+
+
     }
 
-    private void listenForRequest() {
+    private void listenForRideRequest() {
+
+        clientRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
+
+                if (e != null) {
+                    Log.w(TAG, "Listen failed.", e);
+                    return;
+                }
+
+                if (documentSnapshot != null && documentSnapshot.exists() && online_status) {
+
+                    Log.d(TAG, "Culprit: accept:" + documentSnapshot.get("accepted"));
+
+                    boolean accepted = (boolean) documentSnapshot.get("accepted");
+                    if (!accepted) {
+                        ringtone.play();
+                        final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
+
+                        builder.setMessage("You have an incoming request. Do you want to accept it?")
+                                .setCancelable(true)
+                                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                                    public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                                        //collect data and accept request
+                                        customerID = documentSnapshot.getString("customerID");
+
+                                        pickUplocation = documentSnapshot.getGeoPoint("pickupLocation");
+                                        destination = documentSnapshot.getGeoPoint("destination");
+                                        distanceCovered = documentSnapshot.getLong("distanceCovered");
+                                        amountForJourney = documentSnapshot.getDouble("amount");
+
+                                        acceptRideRequest();
+                                        ringtone.stop();
+                                        dialog.dismiss();
+                                    }
+                                })
+                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                                    public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+
+                                        declineRideRequest();
+                                        ringtone.stop();
+                                        dialog.dismiss();
+                                    }
+                                });
+
+                        final AlertDialog alert = builder.create();
+                        alert.setTitle("Incoming request");
+                        alert.setIcon(R.drawable.zeetaicon);
+
+                        alert.show();
+
+                    }
+                }
+
+            }
+        });
+
+    }
+
+    private void listenForJobRequest() {
 
         stopListenningForRequest();
 
@@ -413,7 +487,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
                         final AlertDialog alert = builder.create();
                         alert.setTitle("Incoming request");
-                        alert.setIcon(R.drawable.zeetasample);
+                        alert.setIcon(R.drawable.zeetaicon);
 
                         alert.show();
 
@@ -425,6 +499,23 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
             }
         });
     }
+
+    private void setRideData() {
+        timeStamp = Timestamp.now();
+        acceptanceStatus = FirebaseFirestore.getInstance()
+                .collection("Customers")
+                .document(customerID).collection("RideData").document("ongoing");
+        JourneyInfo journeyInfo = new JourneyInfo(pickUplocation, destination, driverName, driverphoneNumber, (long) 0, timeStamp, FirebaseAuth.getInstance().getUid(), (long) amountForJourney, true, false, false);
+
+        acceptanceStatus.set(journeyInfo).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+
+            }
+        });
+
+    }
+
 
     private void setJobData() {
         final boolean[] result = new boolean[1];
@@ -439,7 +530,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                 String ID = task.getResult().get("id").toString();
                 clientGp[0] = task.getResult().getGeoPoint("geoPoint");
                 employeeID[0] = ID;
-                Log.d("setJobData:", "This is the ID :" + ID);
+
                 DocumentReference employeeN = FirebaseFirestore.getInstance()
                         .collection("Customers")
                         .document(employeeID[0]);
@@ -475,13 +566,29 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         phoneNum[0] = null;
     }
 
+    private void acceptRideRequest() {
+        setRideData();
+        acceptanceStatus = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(Objects.requireNonNull(getInstance().getUid())).collection("RideData").document("ongoing");
+        acceptanceStatus.update("accepted", true);
+
+    }
+
     private void acceptRequest() {
         setJobData();
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
                 .document(Objects.requireNonNull(getInstance().getUid())).collection("Request").document("ongoing");
-        acceptanceStatus.update("accepted", "Accepted");
+        acceptanceStatus.update("accepted", true);
 
+    }
+
+    private void declineRideRequest() {
+        acceptanceStatus = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(Objects.requireNonNull(getInstance().getUid())).collection("RideData").document("ongoing");
+        acceptanceStatus.update("accepted", false);
     }
 
     private void declineRequest() {
@@ -779,7 +886,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
         if (checkMapServices()) {
             if (mLocationPermissionGranted) {
-                //getWorkerDetails();
+
             } else {
                 getLocationPermission();
             }
@@ -1123,6 +1230,8 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                     DocumentSnapshot doc = task.getResult();
                     String aiki = (String) doc.get("profession");
                     locality = (String) doc.get("state");
+                    driverphoneNumber = (String) doc.get("phoneNumber");
+                    driverName = (String) doc.get("name");
                     if (aiki == null) {
                         Log.d(TAG, "No data found ");
                     } else {
@@ -1133,7 +1242,20 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
             }
 
         });
+
+        if (staffOccupation.equalsIgnoreCase("Taxi") || staffOccupation.equalsIgnoreCase("Tycycle(Keke)")) {
+            clientRequest = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("RideData").document("ongoing");
+
+        } else {
+            clientRequest = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
+        }
+
         return staffOccupation;
+
     }
 
 
