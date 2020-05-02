@@ -75,6 +75,7 @@
     <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
     <string name="support">Support</string>
     <string name="title_activity_start_page">StartPage</string>
+    <string name="start_journey">Start Journey</string>
 
 
 </resources>
