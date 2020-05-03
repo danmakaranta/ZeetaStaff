@@ -184,9 +184,8 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         Button plusBtn = findViewById(R.id.add_hour);
         Button callBtn = findViewById(R.id.call_btn);
         Button startJobBtn = findViewById(R.id.start_job);
-        if (profession.equalsIgnoreCase("Taxi") || profession.equalsIgnoreCase("Trycycle(Keke)")) {
-            startJobBtn.setText("Start Journey");
-        }
+
+        startJobBtn.setText("Start Job");
         TextView reportTxt = findViewById(R.id.report_txt);
         TextView clsJob = findViewById(R.id.close_job);
         TextView creatInvoice = findViewById(R.id.create_invoice);

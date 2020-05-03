@@ -108,16 +108,16 @@ public class Jobs extends AppCompatActivity {
 
                     for (QueryDocumentSnapshot document : task.getResult()) {
 
-                        String name = document.getData().get("clientName").toString();
+                        String name = document.getData().get("name").toString();
                         Timestamp date = (Timestamp) document.getData().get("timeStamp");
                         Long amount = (Long) document.getData().get("amountPaid");
                         status = document.getData().get("status").toString();
                         assert amount != null;
                         Double amountPaid = amount.doubleValue();
-                        String phoneNumber = Objects.requireNonNull(document.getData().get("clientPhone")).toString();
+                        String phoneNumber = Objects.requireNonNull(document.getData().get("phoneNumber")).toString();
                         Long hoursWorked = (Long) document.getData().get("hoursWorked");
-                        GeoPoint gp = (GeoPoint) document.getData().get("gp");
-                        String clientID = document.getData().get("clientID").toString();
+                        GeoPoint gp = (GeoPoint) document.getData().get("serviceLocation");
+                        String clientID = document.getData().get("serviceID").toString();
                         String startedStr = Objects.requireNonNull(document.getData().get("started")).toString();
                         boolean started = Boolean.parseBoolean(startedStr);
                         jobsList.add(new JobsInfo(name, amountPaid, date, phoneNumber, clientID, status, hoursWorked, gp, started));

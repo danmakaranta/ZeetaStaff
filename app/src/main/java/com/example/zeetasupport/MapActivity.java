@@ -397,6 +397,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                 }
 
                 if (documentSnapshot != null && documentSnapshot.exists() && online_status) {
+                    documentSnapshot.getReference();
 
                     boolean accepted = (boolean) documentSnapshot.get("accepted");
                     if (!accepted) {
