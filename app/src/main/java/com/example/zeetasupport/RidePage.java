@@ -1,8 +1,11 @@
 package com.example.zeetasupport;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -19,6 +22,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.maps.GeoApiContext;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -60,10 +64,14 @@ public class RidePage extends AppCompatActivity implements OnMapReadyCallback {
     }
 
     private void initMap() {// for initializing the map
-
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.JobmapView);
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.rideMap);
         mapFragment.getMapAsync(RidePage.this);
+    }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    public boolean isInternetConnection() {
+        ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
     }
 
     private void getDeviceLocation() {

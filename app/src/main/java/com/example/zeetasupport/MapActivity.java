@@ -33,7 +33,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.zeetasupport.data.JobData;
 import com.example.zeetasupport.models.PolylineData;
 import com.example.zeetasupport.models.User;
 import com.example.zeetasupport.models.WorkerLocation;
@@ -215,7 +214,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     }
     public String bestProvider;
     DocumentReference jobData = null;
-    private String protemp = null;
+    private String protemp = "";
     private String uID;
     private DatabaseReference ref = null;
     private @ServerTimestamp
@@ -226,22 +225,28 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
+        connect = findViewById(R.id.connect_view);
 
+        clientRequest = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
 
         if (isInternetConnection()) {
-            new CountDownTimer(1000, 4000) {
+            new CountDownTimer(1000, 5000) {
                 @Override
                 public void onTick(long millisUntilFinished) {
-                    // do nothing 4s
-                    getDeviceLocation();
+                    protemp = getProfession();
                     staffID = getInstance().getUid();
                     numConnect = getConnect();
-
+                    getDeviceLocation();
                 }
-
                 @Override
                 public void onFinish() {
-                    // do something end times 1s
+                    // be crazy and repeat all these
+                    protemp = getProfession();
+                    staffID = getInstance().getUid();
+                    numConnect = getConnect();
+                    getDeviceLocation();
                 }
 
             }.start();
@@ -250,10 +255,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
             Toast.makeText(this, "Please check that you are connected to the internet!", Toast.LENGTH_SHORT).show();
         }
 
-
-        connect = findViewById(R.id.connect_view);
         online_status = false;
-
 
         tempButton = findViewById(R.id.change_btn);
 
@@ -265,8 +267,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         mDb = FirebaseFirestore.getInstance();
 
         ringtone.setStreamType(AudioManager.STREAM_RING);
-        protemp = getProfession();
-
 
         markerPinned = false;
         if (mGeoApiContext == null) {
@@ -274,8 +274,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                     .apiKey(getString(R.string.google_maps_api_key))
                     .build();
         }
-
-
 
         //initialize and assign variables for the bottom navigation
         BottomNavigationView bottomNavigationView = findViewById(R.id.nav_view);
@@ -326,12 +324,10 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                                 deleteOnlinePresence(FirebaseAuth.getInstance().getUid());
                                 numConnect = getConnect();
                                 tempButton.setBackgroundColor(R.drawable.custom_button);
-                                connect.findViewById(R.id.connect_view);
                                 String msg = "Connects: " + numConnect;
                                 connect.setText(msg);
                                 connect.invalidate();
                                 stopListenningForRequest();
-
                             }
                         }
 
@@ -341,12 +337,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                             startLocationService();
                             createOnlinePresence();
                             online_status = true;
-                            if (getProfession().equalsIgnoreCase("Taxi") || getProfession().equalsIgnoreCase("Trycycle(Keke)")) {
-                                listenForRideRequest();
-                            } else {
-                                listenForJobRequest();
-                            }
-
+                            listenForJobRequest();
                             connect.setVisibility(View.GONE);
                             tempButton.setText("Go offline");
                             tempButton.setBackgroundColor(R.drawable.online_custom_button);
@@ -366,7 +357,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                                     })
                                     .setNegativeButton("No", new DialogInterface.OnClickListener() {
                                         public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-
                                             dialog.dismiss();
                                         }
                                     });
@@ -374,6 +364,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                             final AlertDialog alert = builder.create();
                             alert.setTitle("Low Connect!");
                             alert.setIcon(R.drawable.zeetaicon);
+                            alert.show();
                         }
                     }
                 } else {
@@ -385,67 +376,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
     }
 
-    private void listenForRideRequest() {
-
-        clientRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
-            @Override
-            public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
-
-                if (e != null) {
-                    Log.w(TAG, "Listen failed.", e);
-                    return;
-                }
-
-                if (documentSnapshot != null && documentSnapshot.exists() && online_status) {
-                    documentSnapshot.getReference();
-
-                    boolean accepted = (boolean) documentSnapshot.get("accepted");
-                    if (!accepted) {
-                        ringtone.play();
-                        final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
-
-                        builder.setMessage("You have an incoming request. Do you want to accept it?")
-                                .setCancelable(true)
-                                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                                    public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-                                        //collect data and accept request
-                                        customerID = documentSnapshot.getString("customerID");
-
-                                        pickUplocation = documentSnapshot.getGeoPoint("pickupLocation");
-                                        destination = documentSnapshot.getGeoPoint("destination");
-                                        distanceCovered = documentSnapshot.getLong("distanceCovered");
-                                        amountForJourney = documentSnapshot.getDouble("amount");
-
-                                        acceptRideRequest();
-                                        ringtone.stop();
-                                        dialog.dismiss();
-                                    }
-                                })
-                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                                    public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-
-                                        declineRideRequest();
-                                        ringtone.stop();
-                                        dialog.dismiss();
-                                    }
-                                });
-
-                        final AlertDialog alert = builder.create();
-                        alert.setTitle("Incoming request");
-                        alert.setIcon(R.drawable.zeetaicon);
-
-                        alert.show();
-
-                    }
-                }
-
-            }
-        });
-
-    }
-
     private void listenForJobRequest() {
-
         stopListenningForRequest();
 
         clientRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
@@ -487,9 +418,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                         final AlertDialog alert = builder.create();
                         alert.setTitle("Incoming request");
                         alert.setIcon(R.drawable.zeetaicon);
-
                         alert.show();
-
                     }
 
                 } else {
@@ -536,7 +465,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                 employeeN.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                     @Override
                     public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                        String nameTemp = task.getResult().get("name").toString();
+                        String nameTemp = task.getResult().get("username").toString();
                         phoneNum[0] = task.getResult().get("phoneNumber").toString();
                         employeeName[0] = nameTemp;
                         setJobDataOnCloud();
@@ -551,13 +480,8 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
     private void setJobDataOnCloud() {
         jobData = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(getInstance().getUid()).collection("JobData").document(employeeID[0]);
-        jobData.set(new JobData(employeeID[0], employeeName[0], phoneNum[0], "Ongoing", (long) 0, null, clientGp[0], (long) 0, false)).addOnCompleteListener(new OnCompleteListener<Void>() {
-            @Override
-            public void onComplete(@NonNull Task<Void> task) {
-                Log.d("setJobData", "Job data set");
-            }
-        });
+                .document(FirebaseAuth.getInstance().getUid()).collection("JobData").document(employeeID[0]);
+
         //reset the variables for next request
         jobData = null;
         employeeName[0] = null;
@@ -565,21 +489,21 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         phoneNum[0] = null;
     }
 
-    private void acceptRideRequest() {
-        setRideData();
-        acceptanceStatus = FirebaseFirestore.getInstance()
-                .collection("Users")
-                .document(Objects.requireNonNull(getInstance().getUid())).collection("RideData").document("ongoing");
-        acceptanceStatus.update("accepted", true);
-
-    }
-
     private void acceptRequest() {
-        setJobData();
+        //setJobData();
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
                 .document(Objects.requireNonNull(getInstance().getUid())).collection("Request").document("ongoing");
-        acceptanceStatus.update("accepted", true);
+        acceptanceStatus.update("accepted", "Accepted").addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (protemp.equalsIgnoreCase("Taxi") || protemp.equalsIgnoreCase("Trycycle(Keke)")) {
+                    startActivity(new Intent(getApplicationContext(), RidePage.class));
+                    overridePendingTransition(0, 0);
+                }
+
+            }
+        });
 
     }
 
@@ -760,7 +684,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                        /* MarkerOptions options = new MarkerOptions().position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude())));
                        // mMap.addMarker(options.position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude()))));
 */
-                        calculateDirections(geoPoint);
+                        //calculateDirections(geoPoint);
 
 
                     } else {
@@ -967,19 +891,29 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
     private void moveCamera(LatLng latlng, float zoom, String title) {
         Log.d(TAG, "moveCamera: moving camera to current latitude:" + latlng.latitude + " longitude" + latlng.longitude);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
+
         //create a marker to drop pin at the location
         MarkerOptions options = new MarkerOptions().position(latlng);
         options.title("You");
+        mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.car64));
 
-        if (markerPinned) {
-            mMap.addMarker(options.position(latlng)).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
+        /*if (markerPinned) {
+            if (protemp.equalsIgnoreCase("Taxi")) {
+                mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.car64));
+            }else{
+                mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
+            }
         } else {
             initMap();
-            //mMap.addMarker(options.position(latlng)).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
-            mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
+            if (protemp.equalsIgnoreCase("Taxi")) {
+                mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.car64));
+            }else{
+                mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
+            }
             markerPinned = true;
-        }
+        }*/
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
 
     }
 
@@ -999,7 +933,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
 
 
     private void initMap() {// for initializing the map
-        Log.d(TAG, "initMap: initializing map");
+
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(MapActivity.this);
     }
@@ -1182,7 +1116,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             connectref = FirebaseFirestore.getInstance()
                     .collection("Users")
-                    .document(staffID);
+                    .document(Objects.requireNonNull(getInstance().getUid()));
         }
 
         connectref.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
@@ -1197,7 +1131,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
                     } else {
                         String msg = "Connects: " + connectLong.toString();
                         connect.setText(msg);
-
                         connects = safeLongToInt(connectLong);
                         numConnect = connects;
                         Log.d(TAG, "Number of connects found: " + connects);
@@ -1208,7 +1141,7 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
         });
         String message = "Connects: " + connects;
 
-        // connect.setText(message);
+        connect.setText(message);
         return connects;
     }
 
@@ -1241,17 +1174,6 @@ public class MapActivity extends FragmentActivity implements LocationListener, O
             }
 
         });
-
-        if (staffOccupation.equalsIgnoreCase("Taxi") || staffOccupation.equalsIgnoreCase("Tycycle(Keke)")) {
-            clientRequest = FirebaseFirestore.getInstance()
-                    .collection("Users")
-                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("RideData").document("ongoing");
-
-        } else {
-            clientRequest = FirebaseFirestore.getInstance()
-                    .collection("Users")
-                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
-        }
 
         return staffOccupation;
 
