@@ -7,9 +7,8 @@ import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.GeoPoint;
 import com.google.firebase.firestore.ServerTimestamp;
 
-import java.util.Date;
-
 public class JourneyInfo implements Parcelable {
+
 
     private GeoPoint pickupLocation;
     private GeoPoint destination;
@@ -24,121 +23,48 @@ public class JourneyInfo implements Parcelable {
             return new JourneyInfo[size];
         }
     };
-    private String driverName;
+    private String customerID;
     private Long distanceCovered;
-    private String driverPhoneNumber;
-    private @ServerTimestamp
-    Date journeyTime;
-    private @ServerTimestamp
-    Timestamp timeStamp;
-    private String serviceProviderID;
     private Long amount;
-    private Boolean accepted;
+    private String customerPhoneNumber;
     private Boolean started;
     private Boolean ended;
+    private String accepted;
+    private @ServerTimestamp
+    Timestamp timeStamp;
+
+    JourneyInfo(GeoPoint pickupLocation, GeoPoint destination, String driverName, String customerPhoneNumber, Long distanceCovered, Timestamp timeStamp, Long amount, String accepted, Boolean started, Boolean ended) {
+        this.pickupLocation = pickupLocation;
+        this.destination = destination;
+        this.customerID = driverName;
+        this.customerPhoneNumber = customerPhoneNumber;
+        this.distanceCovered = distanceCovered;
+        this.timeStamp = timeStamp;
+        this.amount = amount;
+        this.accepted = accepted;
+        this.started = started;
+        this.ended = ended;
+    }
 
     protected JourneyInfo(Parcel in) {
-        driverName = in.readString();
-        driverPhoneNumber = in.readString();
+        customerID = in.readString();
+        customerPhoneNumber = in.readString();
         if (in.readByte() == 0) {
             distanceCovered = null;
         } else {
             distanceCovered = in.readLong();
         }
-        timeStamp = in.readParcelable(Timestamp.class.getClassLoader());
-        serviceProviderID = in.readString();
         if (in.readByte() == 0) {
             amount = null;
         } else {
             amount = in.readLong();
         }
-        byte tmpAccepted = in.readByte();
-        accepted = tmpAccepted == 0 ? null : tmpAccepted == 1;
+        accepted = in.readString();
         byte tmpStarted = in.readByte();
         started = tmpStarted == 0 ? null : tmpStarted == 1;
         byte tmpEnded = in.readByte();
         ended = tmpEnded == 0 ? null : tmpEnded == 1;
-    }
-
-    public JourneyInfo(GeoPoint pickupLocation, GeoPoint destination, String driverName, String driverPhoneNumber, Long distanceCovered, Timestamp timeStamp, String serviceProviderID, Long amount, Boolean accepted, Boolean started, Boolean ended) {
-        this.pickupLocation = pickupLocation;
-        this.destination = destination;
-        this.driverName = driverName;
-        this.driverPhoneNumber = driverPhoneNumber;
-        this.distanceCovered = distanceCovered;
-        this.timeStamp = timeStamp;
-        this.serviceProviderID = serviceProviderID;
-        this.amount = amount;
-        this.accepted = accepted;
-        this.started = started;
-        this.ended = ended;
-    }
-
-    public JourneyInfo(GeoPoint pickupLocation, GeoPoint destination, String driverName, String driverPhoneNumber, Long distanceCovered, Date journeyTime, String serviceProviderID, Long amount, Boolean accepted, Boolean started, Boolean ended) {
-        this.pickupLocation = pickupLocation;
-        this.destination = destination;
-        this.driverName = driverName;
-        this.driverPhoneNumber = driverPhoneNumber;
-        this.distanceCovered = distanceCovered;
-        this.journeyTime = journeyTime;
-        this.serviceProviderID = serviceProviderID;
-        this.amount = amount;
-        this.accepted = accepted;
-        this.started = started;
-        this.ended = ended;
-    }
-
-    public JourneyInfo(GeoPoint pickupLocation, GeoPoint destination, String driverName, String driverPhoneNumber, Long distanceCovered, Date journeyTime) {
-        this.pickupLocation = pickupLocation;
-        this.destination = destination;
-        this.driverName = driverName;
-        this.driverPhoneNumber = driverPhoneNumber;
-        this.distanceCovered = distanceCovered;
-        this.journeyTime = journeyTime;
-    }
-
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(driverName);
-        dest.writeString(driverPhoneNumber);
-        if (distanceCovered == null) {
-            dest.writeByte((byte) 0);
-        } else {
-            dest.writeByte((byte) 1);
-            dest.writeLong(distanceCovered);
-        }
-        dest.writeParcelable(timeStamp, flags);
-        dest.writeString(serviceProviderID);
-        if (amount == null) {
-            dest.writeByte((byte) 0);
-        } else {
-            dest.writeByte((byte) 1);
-            dest.writeLong(amount);
-        }
-        dest.writeByte((byte) (accepted == null ? 0 : accepted ? 1 : 2));
-        dest.writeByte((byte) (started == null ? 0 : started ? 1 : 2));
-        dest.writeByte((byte) (ended == null ? 0 : ended ? 1 : 2));
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    public Timestamp getTimeStamp() {
-        return timeStamp;
-    }
-
-    public void setTimeStamp(Timestamp timeStamp) {
-        this.timeStamp = timeStamp;
-    }
-
-    public String getServiceProviderID() {
-        return serviceProviderID;
-    }
-
-    public void setServiceProviderID(String serviceProviderID) {
-        this.serviceProviderID = serviceProviderID;
+        timeStamp = in.readParcelable(Timestamp.class.getClassLoader());
     }
 
     public Long getAmount() {
@@ -149,11 +75,11 @@ public class JourneyInfo implements Parcelable {
         this.amount = amount;
     }
 
-    public Boolean getAccepted() {
+    public String getAccepted() {
         return accepted;
     }
 
-    public void setAccepted(Boolean accepted) {
+    public void setAccepted(String accepted) {
         this.accepted = accepted;
     }
 
@@ -189,20 +115,20 @@ public class JourneyInfo implements Parcelable {
         this.destination = destination;
     }
 
-    public String getDriverName() {
-        return driverName;
+    public String getCustomerID() {
+        return customerID;
     }
 
-    public void setDriverName(String driverName) {
-        this.driverName = driverName;
+    public void setCustomerID(String customerID) {
+        this.customerID = customerID;
     }
 
-    public String getDriverPhoneNumber() {
-        return driverPhoneNumber;
+    public String getCustomerPhoneNumber() {
+        return customerPhoneNumber;
     }
 
-    public void setDriverPhoneNumber(String driverPhoneNumber) {
-        this.driverPhoneNumber = driverPhoneNumber;
+    public void setCustomerPhoneNumber(String customerPhoneNumber) {
+        this.customerPhoneNumber = customerPhoneNumber;
     }
 
     public Long getDistanceCovered() {
@@ -213,13 +139,39 @@ public class JourneyInfo implements Parcelable {
         this.distanceCovered = distanceCovered;
     }
 
-    public Date getJourneyTime() {
-        return journeyTime;
+    public Timestamp getTimeStamp() {
+        return timeStamp;
     }
 
-    public void setJourneyTime(Date journeyTime) {
-        this.journeyTime = journeyTime;
+    public void setTimeStamp(Timestamp timeStamp) {
+        this.timeStamp = timeStamp;
     }
 
 
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(customerID);
+        dest.writeString(customerPhoneNumber);
+        if (distanceCovered == null) {
+            dest.writeByte((byte) 0);
+        } else {
+            dest.writeByte((byte) 1);
+            dest.writeLong(distanceCovered);
+        }
+        if (amount == null) {
+            dest.writeByte((byte) 0);
+        } else {
+            dest.writeByte((byte) 1);
+            dest.writeLong(amount);
+        }
+        dest.writeString(accepted);
+        dest.writeByte((byte) (started == null ? 0 : started ? 1 : 2));
+        dest.writeByte((byte) (ended == null ? 0 : ended ? 1 : 2));
+        dest.writeParcelable(timeStamp, flags);
+    }
 }

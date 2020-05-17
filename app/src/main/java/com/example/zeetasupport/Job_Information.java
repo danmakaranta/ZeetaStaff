@@ -44,6 +44,7 @@ import com.google.firebase.firestore.ServerTimestamp;
 import com.google.maps.GeoApiContext;
 
 import java.util.Date;
+import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -428,13 +429,18 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     public boolean isInternetConnection() {
-
         ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        return connectivityManager.getActiveNetworkInfo().isConnectedOrConnecting();
+
+        assert connectivityManager != null;
+        if ((connectivityManager.getActiveNetworkInfo()) != null) {
+            return (Objects.requireNonNull(connectivityManager.getActiveNetworkInfo())).isConnected();
+        } else {
+            return false;
+        }
+
     }
 
     private void initMap() {// for initializing the map
-
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.JobmapView);
         mapFragment.getMapAsync(Job_Information.this);
 
@@ -445,7 +451,6 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         moveCamera(new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude()), 14, jobData.getName());
-
     }
 
     private void moveCamera(LatLng latlng, float zoom, String title) {
@@ -455,8 +460,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         options.title(jobData.getName());
         mMap.addMarker(options);
         initMap();
-        mMap.addMarker(options);
-
+        //mMap.addMarker(options);
     }
 
 

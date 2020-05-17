@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">Zeeta Support</string>
-    <string name="google_maps_api_key">AIzaSyDtZoloBYNpnid7QJG_3xzm-Skay3S0oBs</string>
+    <string name="google_maps_api_key">AIzaSyBRF9J5usBm29bgTLWAu5YhR9-WFLNt0Yk</string>
+    <string name="google_directions_api_key">AIzaSyB9nZYenhhs6M8MEXs4xqBYDmaiPpMP4mQ</string>
     <string name="prompt_email">Email</string>
     <string name="prompt_password">Password</string>
     <string name="action_sign_in">Sign in or register</string>
@@ -75,7 +76,9 @@
     <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
     <string name="support">Support</string>
     <string name="title_activity_start_page">StartPage</string>
-    <string name="start_journey">Start Journey</string>
+    <string name="start_journey">Start Ride</string>
+    <string name="end_ride">End Ride</string>
+    <string name="call_rider">Call Rider</string>
 
 
 </resources>

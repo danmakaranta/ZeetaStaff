@@ -67,6 +67,12 @@ public class Signin extends AppCompatActivity implements
 
     }
 
+    private void register() {
+        Intent intent = new Intent(Signin.this, Enrollment.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+    }
+
 
     /*
         ----------------------------- Firebase setup ---------------------------------
@@ -142,19 +148,25 @@ public class Signin extends AppCompatActivity implements
                 && !isEmpty(mPassword.getText().toString())) {
             Log.d(TAG, "onClick: attempting to authenticate.");
             Toast.makeText(Signin.this, "Signing in...", Toast.LENGTH_SHORT).show();
-            showDialog();
+
             FirebaseAuth.getInstance().signInWithEmailAndPassword(mEmail.getText().toString(),
                     mPassword.getText().toString())
                     .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
-                            hideDialog();
+                            if (task.isSuccessful()) {
+                                hideDialog();
+                                showDialog();
+                            }
+
                         }
                     }).addOnFailureListener(new OnFailureListener() {
                 @Override
                 public void onFailure(@NonNull Exception e) {
-                    Toast.makeText(Signin.this, "Authentication Failed", Toast.LENGTH_SHORT).show();
-                    hideDialog();
+                    Toast.makeText(Signin.this, "Authentication Failed:" + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                    //hideDialog();
+                    Log.d("Authentication failed:", "Authentication Failed:" + e.getLocalizedMessage());
+
                 }
             });
         } else {
@@ -165,8 +177,14 @@ public class Signin extends AppCompatActivity implements
     @RequiresApi(api = Build.VERSION_CODES.M)
     public boolean isInternetConnection() {
         ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+
         assert connectivityManager != null;
-        return Objects.requireNonNull(connectivityManager.getActiveNetworkInfo()).isConnectedOrConnecting();
+        if ((connectivityManager.getActiveNetworkInfo()) != null) {
+            return (Objects.requireNonNull(connectivityManager.getActiveNetworkInfo())).isConnected();
+        } else {
+            return false;
+        }
+
     }
 
     private void showDialog() {
