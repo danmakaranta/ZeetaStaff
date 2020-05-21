@@ -90,11 +90,11 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
 
         jobsOnCloud = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(FirebaseAuth.getInstance().getUid()).collection("JobData").document(jobData.getClientID());
+                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("JobData").document(jobData.getClientID());
         jobsOnCloud.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                geoPoint = task.getResult().getGeoPoint("gp");
+                geoPoint = task.getResult().getGeoPoint("serviceLocation");
                 Log.d("Testing GP:", "testing user geopoints " + geoPoint);
                 if (geoPoint != null) {
                     initMap();
@@ -458,7 +458,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         //create a marker to drop pin at the location
         MarkerOptions options = new MarkerOptions().position(latlng);
         options.title(jobData.getName());
-        mMap.addMarker(options);
+        mMap.addMarker(options).showInfoWindow();
         initMap();
         //mMap.addMarker(options);
     }
@@ -480,7 +480,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
                         if (task.isSuccessful()) {
                             Location location = task.getResult();
                             currentLocation = location;
-                            Log.d("StartingPoint", String.valueOf(currentLocation));
+
                         }
                     }
 

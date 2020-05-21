@@ -106,9 +106,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private static final String COURSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
     private static final float DEFAULT_ZOOM = 17f;
-    private static final int LOCATION_UPDATE_INTERVAL = 4000;
-    private final static long FASTEST_INTERVAL = 10000; /* 2 sec */
-    private static final int LOCATION_UPDATE_INTERVAL2 = 10000;
+    private static final int LOCATION_UPDATE_INTERVAL2 = 4000;
     final String[] employeeName = new String[1];
     final String[] employeeID = new String[1];
     final String[] phoneNum = new String[1];
@@ -159,6 +157,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private boolean online_status;
     private FusedLocationProviderClient locationProviderClient;
     private String locality = "StateNotFound";
+    private boolean engaged = false;
     private Handler handler;
     private int connects;
     private int numConnect;
@@ -169,6 +168,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     Timestamp timeStamp;
     private JourneyInfo rideData;
     private LoaderManager loaderManager;
+    private DocumentReference serviceProviderData;
 
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
@@ -307,6 +307,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             @Override
             public void onClick(View v) {
                 mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
+
+                if (engaged) {
+
+                } else {
+
+                }
 
                 if (isInternetConnection()) {
                     if (online_status) {
@@ -500,7 +506,15 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         acceptanceStatus.update("accepted", "Accepted").addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
-                startJourneyLoader();
+                serviceProviderData.update("engaged", "true").addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        Log.d("EngagedLog", "Service provider now engaged");
+                        if (protemp.equalsIgnoreCase("taxi") || protemp.equalsIgnoreCase("Trycycle(Keke)")) {
+                            startJourneyLoader();
+                        }
+                    }
+                });
             }
         });
 
@@ -787,13 +801,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
 
-
-
     @Override
     protected void onResume() {
         super.onResume();
+
         if (isLocationServiceRunning()) {
-            tempButton.setText("Go offline");
+            tempButton.setText(R.string.online_status);
             tempButton.setBackgroundColor(R.drawable.online_custom_button);
             connect.setVisibility(View.GONE);
             online_status = true;
@@ -893,7 +906,14 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         //create a marker to drop pin at the location
         MarkerOptions options = new MarkerOptions().position(latlng);
         options.title("You");
-        mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.car64));
+
+        if (protemp.equalsIgnoreCase("Taxi") || protemp.equalsIgnoreCase("Trycycle(Keke)")) {
+            mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.car64));
+            //staffMarker.showInfoWindow();
+
+        } else {
+            mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.ic_directions_walk_black_24dp));
+        }
 
         /*if (markerPinned) {
             if (protemp.equalsIgnoreCase("Taxi")) {
@@ -931,7 +951,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
 
     private void initMap() {// for initializing the map
-
+        Log.d("initMap", "initializing map");
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(MapActivity.this);
     }
@@ -1028,6 +1048,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
             Log.d("ref", "refff" + ref.toString());
             geoFire = new GeoFire(ref);
+            createOnlinePresence();
         }
 
 
@@ -1148,14 +1169,14 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
     public String getProfession() {
 
-        DocumentReference proffession = null;
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-            proffession = FirebaseFirestore.getInstance()
+            serviceProviderData = FirebaseFirestore.getInstance()
                     .collection("Users")
                     .document(Objects.requireNonNull(getInstance().getUid()));
         }
-        if (proffession != null) {
-            proffession.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+        if (serviceProviderData != null) {
+            serviceProviderData.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                 @Override
                 public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                     if (task.isSuccessful()) {
@@ -1164,6 +1185,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         locality = (String) doc.get("state");
                         driverphoneNumber = (String) doc.get("phoneNumber");
                         driverName = (String) doc.get("name");
+                        engaged = (boolean) doc.get("engaged");
                         Long connectLong = (Long) doc.get("connects");
                         if (aiki == null) {
                             Log.d(TAG, "No data found ");
@@ -1207,7 +1229,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
                 mTripMarkers.add(marker);
 
-                marker.showInfoWindow();
+
             } else {
                 polylineData.getPolyline().setColor(R.color.darkGrey);
                 polylineData.getPolyline().setZIndex(0);
@@ -1215,6 +1237,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         }
 
     }
+
+    private boolean onAJob() {
+
+        return false;
+    }
+
 
     @Override
     public void onLocationChanged(Location location) {

@@ -25,15 +25,19 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
+
+import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
+
+import static com.google.firebase.auth.FirebaseAuth.getInstance;
 
 
 public class LocationService extends Service {
@@ -43,6 +47,7 @@ public class LocationService extends Service {
     private FusedLocationProviderClient mFusedLocationClient;
     private final static long UPDATE_INTERVAL = 10000;  /* 10 secs */
     private final static long FASTEST_INTERVAL = 10000; /* 10 sec */
+    private String staffLocality = "";
 
 
     @Override
@@ -66,7 +71,8 @@ public class LocationService extends Service {
             //startForeground(1, notification);
 
         }
-        getLocation();
+        getBaseOfOperation();
+
     }
 
 
@@ -124,31 +130,65 @@ public class LocationService extends Service {
 
     private void saveUserLocation(final WorkerLocation userLocation) {
 
-        try {
-            DocumentReference locationRef = FirebaseFirestore.getInstance()
-                    .collection("AbujaOnline")
-                    .document(FirebaseAuth.getInstance().getUid());
+        if (staffLocality != null && staffLocality.length() <= 0) {
+            getBaseOfOperation();
+
+        } else {
+
+            try {
+                DocumentReference locationRef = FirebaseFirestore.getInstance()
+                        .collection(staffLocality)
+                        .document(Objects.requireNonNull(getInstance().getUid()));
 
 
-            locationRef.set(userLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
+                locationRef.set(userLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            Log.d(TAG, "onComplete: \ninserted user location into database." +
+                                    "\n latitude: " + userLocation.getGeoPoint().getLatitude() +
+                                    "\n longitude: " + userLocation.getGeoPoint().getLongitude());
+                        } else {
+                            Log.e(TAG, "saveUserLocation: could'nt insert");
+                        }
+                    }
+                });
+            } catch (NullPointerException e) {
+                Log.e(TAG, "saveUserLocation: User instance is null, stopping location service.");
+                Log.e(TAG, "saveUserLocation: NullPointerException: " + e.getMessage());
+                stopSelf();
+            }
+
+        }
+
+
+    }
+
+
+    public void getBaseOfOperation() {
+
+        DocumentReference baseOfOperation = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            baseOfOperation = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(Objects.requireNonNull(getInstance().getUid()));
+        }
+        if (baseOfOperation != null) {
+            baseOfOperation.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                 @Override
-                public void onComplete(@NonNull Task<Void> task) {
+                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                     if (task.isSuccessful()) {
-                        Log.d(TAG, "onComplete: \ninserted user location into database." +
-                                "\n latitude: " + userLocation.getGeoPoint().getLatitude() +
-                                "\n longitude: " + userLocation.getGeoPoint().getLongitude());
-                    } else {
-                        Log.e(TAG, "saveUserLocation: could'nt insert");
+                        DocumentSnapshot doc = task.getResult();
+                        staffLocality = (String) doc.get("state");
+                        getLocation();
                     }
                 }
+
             });
-        } catch (NullPointerException e) {
-            Log.e(TAG, "saveUserLocation: User instance is null, stopping location service.");
-            Log.e(TAG, "saveUserLocation: NullPointerException: " + e.getMessage());
-            stopSelf();
         }
 
     }
+
 }
 
 

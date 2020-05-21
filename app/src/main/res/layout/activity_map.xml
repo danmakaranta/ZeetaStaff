@@ -19,12 +19,8 @@
         android:id="@+id/relLayout1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-
-        android:layout_marginLeft="10dp"
-        android:layout_marginTop="10dp"
         android:layout_alignParentBottom="true"
-        android:layout_marginRight="10dp"
-        android:layout_marginBottom="10dp">
+        android:layout_marginBottom="5dp">
 
         <RelativeLayout
             android:id="@+id/info_tab"
@@ -41,7 +37,7 @@
                 android:layout_marginRight="5dp"
                 android:background="@drawable/custom_button"
                 android:padding="5dp"
-                android:text="@string/go_live"
+                android:text="@string/go_online"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp" />
 

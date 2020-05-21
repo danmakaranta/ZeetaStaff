@@ -7,7 +7,7 @@
     android:gravity="center"
     tools:context=".RidePage">
 
-    <fragment
+    <androidx.fragment.app.FragmentContainerView
         android:id="@+id/rideMap"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
@@ -34,6 +34,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
             android:layout_marginLeft="10dp"
+            android:background="@drawable/custom_button"
             android:layout_marginEnd="10dp"
             android:layout_marginRight="10dp"
             android:text="@string/start_journey" />
@@ -46,12 +47,13 @@
             android:layout_marginRight="10dp"
             android:background="@drawable/online_red"
             android:text="@string/end_ride"
-            android:visibility="gone" />
+            android:visibility="invisible" />
 
         <Button
             android:id="@+id/call_rider"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@drawable/custom_button"
             android:text="@string/call_rider" />
 
     </LinearLayout>
@@ -62,6 +64,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="5dp"
         android:layout_marginTop="5dp"
+        android:background="@drawable/custom_button3"
         android:text="Pickup Rider"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/rideMap" />

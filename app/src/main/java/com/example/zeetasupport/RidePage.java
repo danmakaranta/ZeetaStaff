@@ -24,6 +24,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.example.zeetasupport.models.PolylineData;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -42,6 +43,9 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
 import com.google.maps.DirectionsApiRequest;
 import com.google.maps.GeoApiContext;
@@ -85,6 +89,8 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     private ArrayList<Marker> mTripMarkers = new ArrayList<>();
     private JourneyInfo journeyInfo;
     private LoaderManager loaderManager;
+    private Button endRide;
+    private DocumentReference rideInformation = null;
 
     public static boolean callPermissions(Context context, String... permissions) {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
@@ -107,13 +113,12 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         if (loaderManager.getLoader(1) != null) {
             loaderManager.initLoader(1, null, RidePage.this);
         }
-        Button getDirectionBtn = (Button) findViewById(R.id.pick_up_rider);
+        Button pickupRiderBtn = (Button) findViewById(R.id.pick_up_rider);
         Button callRider = (Button) findViewById(R.id.call_rider);
+        Button startRideBtn = (Button) findViewById(R.id.start_ride);
+        endRide = findViewById(R.id.end_ride);
 
         startJourneyLoader();
-
-        // journeyInfo = getIntent().getExtras().getParcelable("RideData");
-
 
         if (mGeoApiContext == null) {
             mGeoApiContext = new GeoApiContext.Builder()
@@ -121,7 +126,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                     .build();
         }
 
-        getDirectionBtn.setOnClickListener(new View.OnClickListener() {
+        pickupRiderBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(android.content.Intent.ACTION_VIEW, Uri.parse("http://maps.google.com/maps?saddr=" + currentLocation.getLatitude()
@@ -138,12 +143,54 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             public void onClick(View v) {
 
                 if (!callPermissions(RidePage.this, PERMISSIONS)) {
-                    Log.d("testing call", "testing calling...");
+
                     ActivityCompat.requestPermissions(RidePage.this, PERMISSIONS, PERMISSION_ALL);
                 }
                 Intent intent = new Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", journeyInfo.getCustomerPhoneNumber(), null));
                 startActivity(intent);
                 overridePendingTransition(0, 0);
+            }
+        });
+
+        startRideBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startRideBtn.setVisibility(View.INVISIBLE);
+                callRider.setVisibility(View.INVISIBLE);
+                endRide.setVisibility(View.VISIBLE);
+                startRide();
+            }
+        });
+
+        endRide.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                endRide.setVisibility(View.INVISIBLE);
+                startRideBtn.setVisibility(View.VISIBLE);
+                callRider.setVisibility(View.VISIBLE);
+                endRide();
+            }
+        });
+
+    }
+
+    private void endRide() {
+    }
+
+    private void startRide() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            rideInformation = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
+
+        }
+
+        rideInformation.update("started", "true").addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (task.isSuccessful()) {
+                    Toast.makeText(RidePage.this, "Journey Started!", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -339,7 +386,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         initMap();
     }
 
-    public boolean checkLocationPermission() {
+    public void checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -373,9 +420,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                         new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                         MY_PERMISSIONS_REQUEST_LOCATION);
             }
-            return false;
-        } else {
-            return true;
         }
     }
 

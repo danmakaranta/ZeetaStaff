@@ -79,6 +79,7 @@
     <string name="start_journey">Start Ride</string>
     <string name="end_ride">End Ride</string>
     <string name="call_rider">Call Rider</string>
+    <string name="online_status">Go offline</string>
 
 
 </resources>
