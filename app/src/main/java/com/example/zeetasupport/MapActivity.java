@@ -22,6 +22,7 @@ import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.ConnectivityManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -45,9 +46,6 @@ import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -158,17 +156,20 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private FusedLocationProviderClient locationProviderClient;
     private String locality = "StateNotFound";
     private boolean engaged = false;
+    AlertDialog.Builder incomingRequestDialog;
     private Handler handler;
     private int connects;
     private int numConnect;
     private String protemp = "";
-    private String uID;
     private DatabaseReference ref = null;
     private @ServerTimestamp
     Timestamp timeStamp;
     private JourneyInfo rideData;
     private LoaderManager loaderManager;
     private DocumentReference serviceProviderData;
+    AlertDialog alertForRequest;
+    private boolean backFromARide = false;
+    private boolean incomingRequest;
 
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
@@ -197,8 +198,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         googleMap.getUiSettings().setZoomControlsEnabled(true);
         mMap = googleMap;
         if (mLocationPermissionGranted) {
-            getDeviceLocation();
-            init();
+
+            new getDeviceLocationAsync().execute();
+
         }
 
         mMap.setOnPolylineClickListener(this);
@@ -222,6 +224,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         setContentView(R.layout.activity_map);
         connect = findViewById(R.id.connect_view);
 
+        incomingRequest = false;
+
         loaderManager = getLoaderManager();
 
         if (loaderManager.getLoader(1) != null) {
@@ -234,21 +238,16 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                 .collection("Users")
                 .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
         if (isInternetConnection()) {
-            new CountDownTimer(1000, 5000) {
+
+            new CountDownTimer(1000, 3000) {
                 @Override
                 public void onTick(long millisUntilFinished) {
                     protemp = getProfession();
-                    staffID = FirebaseAuth.getInstance().getUid();
-                    numConnect = getConnect();
-                    getDeviceLocation();
                 }
                 @Override
                 public void onFinish() {
-                    // be crazy and repeat all these
-                    protemp = getProfession();
-                    staffID = getInstance().getUid();
-                    numConnect = getConnect();
-                    getDeviceLocation();
+                    new getDeviceLocationAsync().execute();
+
                 }
 
             }.start();
@@ -270,12 +269,15 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
         ringtone.setStreamType(AudioManager.STREAM_RING);
 
+        incomingRequestDialog = new AlertDialog.Builder(MapActivity.this);
+
         markerPinned = false;
         if (mGeoApiContext == null) {
             mGeoApiContext = new GeoApiContext.Builder()
                     .apiKey(getString(R.string.google_maps_api_key))
                     .build();
         }
+
 
         //initialize and assign variables for the bottom navigation
         BottomNavigationView bottomNavigationView = findViewById(R.id.nav_view);
@@ -308,17 +310,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             public void onClick(View v) {
                 mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
 
-                if (engaged) {
-
-                } else {
-
-                }
-
                 if (isInternetConnection()) {
                     if (online_status) {
                         online_status = false;
                         tempButton.setText("Go online");
-                        tempButton.setBackgroundColor(R.drawable.custom_button);
                         tempButton.invalidate();
                         connect.setVisibility(View.VISIBLE);
                         connect.setText("Connects: " + numConnect);
@@ -330,9 +325,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                 stopService(serviceIntent);
                                 //stopLocationUpdates();
                                 Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
-                                deleteOnlinePresence(FirebaseAuth.getInstance().getUid());
+                                deleteOnlinePresence();
                                 numConnect = getConnect();
-                                tempButton.setBackgroundColor(R.drawable.custom_button);
+                                int colorStatus = ContextCompat.getColor(getApplicationContext(), R.color.White);
+                                tempButton.setTextColor(colorStatus);
                                 String msg = "Connects: " + numConnect;
                                 connect.setText(msg);
                                 connect.invalidate();
@@ -349,9 +345,11 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                             listenForJobRequest();
                             connect.setVisibility(View.GONE);
                             tempButton.setText("Go offline");
-                            tempButton.setBackgroundColor(R.drawable.online_custom_button);
+                            // tempButton.setBackgroundColor(R.drawable.online_custom_button);
+                            int colorStatus = ContextCompat.getColor(getApplicationContext(), R.color.red3);
+                            tempButton.setTextColor(colorStatus);
                             Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
-                            tempButton.invalidate();
+
                         } else {
 
                             final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
@@ -402,10 +400,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     Log.d(TAG, "A change has been effected on this doc");
                     String change = documentSnapshot.get("accepted").toString();
                     if (change.equalsIgnoreCase("awaiting")) {
+                        incomingRequest = true;
                         ringtone.play();
-                        final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
 
-                        builder.setMessage("You have an incoming request. Do you want to accept it?")
+                        incomingRequestDialog.setMessage("You have an incoming request. Do you want to accept it?")
                                 .setCancelable(true)
                                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                                     public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
@@ -413,21 +411,23 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                         acceptRequest();
                                         ringtone.stop();
                                         dialog.dismiss();
+                                        incomingRequest = false;
                                     }
                                 })
                                 .setNegativeButton("No", new DialogInterface.OnClickListener() {
                                     public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
 
+                                        incomingRequest = false;
                                         declineRequest();
                                         ringtone.stop();
                                         dialog.dismiss();
                                     }
                                 });
 
-                        final AlertDialog alert = builder.create();
-                        alert.setTitle("Incoming request");
-                        alert.setIcon(R.drawable.zeetaicon);
-                        alert.show();
+                        alertForRequest = incomingRequestDialog.create();
+                        alertForRequest.setTitle("Incoming request");
+                        alertForRequest.setIcon(R.drawable.zeetaicon);
+                        alertForRequest.show();
                     }
 
                 } else {
@@ -506,15 +506,17 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         acceptanceStatus.update("accepted", "Accepted").addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
-                serviceProviderData.update("engaged", "true").addOnCompleteListener(new OnCompleteListener<Void>() {
+                serviceProviderData.update("engaged", true).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
-                        Log.d("EngagedLog", "Service provider now engaged");
+                        //deleteOnlinePresence();
                         if (protemp.equalsIgnoreCase("taxi") || protemp.equalsIgnoreCase("Trycycle(Keke)")) {
                             startJourneyLoader();
                         }
                     }
                 });
+
+
             }
         });
 
@@ -529,59 +531,18 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
 
-    private void deleteOnlinePresence(String id) {
-        geoFire.removeLocation(id);
-    }
-
-    private void startUserLocationsRunnable() {
-        Log.d(TAG, "startUserLocationsRunnable: starting runnable for retrieving updated locations.");
-        mHandler.postDelayed(mRunnable = new Runnable() {
+    private void deleteOnlinePresence() {
+        //geoFire.removeLocation(FirebaseAuth.getInstance().getUid());
+        geoFire.removeLocation(Objects.requireNonNull(getInstance().getUid()), new GeoFire.CompletionListener() {
             @Override
-            public void run() {
-                getLocation();
-                mHandler.postDelayed(mRunnable, LOCATION_UPDATE_INTERVAL2);
+            public void onComplete(String key, DatabaseError error) {
+                ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
+                Log.d("ref", "refff" + ref.toString());
+                geoFire = new GeoFire(ref);
             }
-        }, LOCATION_UPDATE_INTERVAL2);
+        });
     }
 
-
-    private void getLocation() {
-
-        // ---------------------------------- LocationRequest ------------------------------------
-        // Create the location request to start receiving updates
-        LocationRequest mLocationRequestHighAccuracy = new LocationRequest();
-        mLocationRequestHighAccuracy.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequestHighAccuracy.setInterval(LOCATION_UPDATE_INTERVAL2);
-
-
-        // new Google API SDK v11 uses getFusedLocationProviderClient(this)
-        if (ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "getLocation: stopping the location service.");
-            stopLocationUpdates();
-            return;
-        }
-        Log.d(TAG, "getLocation: getting location information.");
-        mFusedLocationClient.requestLocationUpdates(mLocationRequestHighAccuracy, new LocationCallback() {
-                    @Override
-                    public void onLocationResult(LocationResult locationResult) {
-
-                        Log.d(TAG, "onLocationResult: got location result.");
-
-                        Location location = locationResult.getLastLocation();
-
-                        if (location != null) {
-                            User user = ((UserClient) (getApplicationContext())).getUser();
-                            GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
-                            WorkerLocation userLocation = new WorkerLocation(user, geoPoint, null);
-                            saveUserLocation(userLocation);
-                            Log.d(TAG, "onLocationResult: location of last known not null.");
-                        }
-                    }
-                },
-                Looper.myLooper()
-        ); // Looper.myLooper tells this to repeat forever until thread is destroyed
-    }
 
     private void buyConnect() {
     }
@@ -807,7 +768,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
         if (isLocationServiceRunning()) {
             tempButton.setText(R.string.online_status);
-            tempButton.setBackgroundColor(R.drawable.online_custom_button);
+            int colorStatus = ContextCompat.getColor(getApplicationContext(), R.color.red3);
+            tempButton.setTextColor(colorStatus);
             connect.setVisibility(View.GONE);
             online_status = true;
         }
@@ -819,6 +781,14 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             } else {
                 getLocationPermission();
             }
+        }
+        if (incomingRequest) {
+            if (alertForRequest.isShowing()) {
+
+            } else {
+                alertForRequest.show();
+            }
+            //incomingRequestDialog.show();
         }
     }
 
@@ -879,13 +849,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
 
-    private void init() {
-        geolocateInit();
-    }
-
-    private void geolocateInit() {
-        getDeviceLocation();
-    }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     public boolean isInternetConnection() {
@@ -901,13 +864,13 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
     private void moveCamera(LatLng latlng, float zoom, String title) {
-        Log.d(TAG, "moveCamera: moving camera to current latitude:" + latlng.latitude + " longitude" + latlng.longitude);
-
+        mMap.clear();
         //create a marker to drop pin at the location
         MarkerOptions options = new MarkerOptions().position(latlng);
         options.title("You");
 
         if (protemp.equalsIgnoreCase("Taxi") || protemp.equalsIgnoreCase("Trycycle(Keke)")) {
+
             mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.car64));
             //staffMarker.showInfoWindow();
 
@@ -915,38 +878,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.ic_directions_walk_black_24dp));
         }
 
-        /*if (markerPinned) {
-            if (protemp.equalsIgnoreCase("Taxi")) {
-                mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.car64));
-            }else{
-                mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
-            }
-        } else {
-            initMap();
-            if (protemp.equalsIgnoreCase("Taxi")) {
-                mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.car64));
-            }else{
-                mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(),R.drawable.ic_directions_walk_black_24dp));
-            }
-            markerPinned = true;
-        }*/
-
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
 
-    }
-
-    private void resetSelectedMarker() {
-        if (mSelectedMarker != null) {
-            mSelectedMarker.setVisible(true);
-            mSelectedMarker = null;
-            removeTripMarkers();
-        }
-    }
-
-    private void removeTripMarkers() {
-        for (Marker marker : mTripMarkers) {
-            marker.remove();
-        }
     }
 
 
@@ -1058,7 +991,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                 if (task.isSuccessful()) {
                     Location location = task.getResult();
                     Log.d(TAG, "about to set location and UID to database");
-                    geoFire.setLocation(staffID, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
+                    if (geoFire == null) {
+                        geoFire = new GeoFire(ref);
+                    }
+                    geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
 
                         @Override
                         public void onComplete(String key, DatabaseError error) {
@@ -1081,55 +1017,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         return "";
     }
 
-    private void getDeviceLocation() {
-        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        criteria = new Criteria();
-        bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        locationManager.requestLocationUpdates(bestProvider, 10000, 0, this);
-
-        Log.d(TAG, "getDeviceLocation: getting the device current location");
-
-
-        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-
-        try {
-            if (mLocationPermissionGranted) {// check first to see if the permission is granted
-                mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
-                mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
-                    @Override
-                    public void onComplete(@NonNull Task<android.location.Location> task) {
-                        if (task.isSuccessful()) {
-                            Location location = task.getResult();
-                            currentLocation = location;
-                            Log.d(TAG, "about to set location and UID to database");
-                            //move camera to current location on map
-                            if (currentLocation != null) {
-                                moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
-                            }
-
-                        }
-                    }
-
-                });
-            }
-        } catch (SecurityException e) {
-            Log.d(TAG, "getDeviceLocation: SecurityException:" + e.getMessage());
-        }
-
-    }
 
     public int getConnect() {
+        Log.d(TAG, "getConnect called");
 
         DocumentReference connectref = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -1153,7 +1043,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                             connect.setText(msg);
                             connects = safeLongToInt(connectLong);
                             numConnect = connects;
-                            Log.d(TAG, "Number of connects found: " + connects);
+
                         }
                     }
                 }
@@ -1162,13 +1052,11 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         }
 
         String message = "Connects: " + connects;
-
         connect.setText(message);
         return connects;
     }
 
     public String getProfession() {
-
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             serviceProviderData = FirebaseFirestore.getInstance()
@@ -1185,13 +1073,25 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         locality = (String) doc.get("state");
                         driverphoneNumber = (String) doc.get("phoneNumber");
                         driverName = (String) doc.get("name");
-                        engaged = (boolean) doc.get("engaged");
+                        boolean staffEngaged = (boolean) doc.get("engaged");
+                        staffID = doc.getString("user_Id");
                         Long connectLong = (Long) doc.get("connects");
+                        connects = safeLongToInt(connectLong);
+                        String message = "Connects: " + connects;
+                        connect.setText(message);
                         if (aiki == null) {
                             Log.d(TAG, "No data found ");
                         } else {
                             Log.d(TAG, aiki);
                             staffOccupation = aiki;
+                            if (staffEngaged) {
+                                Log.d("engaged", "engaged called " + staffEngaged);
+                                if (aiki.equalsIgnoreCase("Taxi") || aiki.equalsIgnoreCase("Trycycle(Keke)")) {
+                                    startJourneyLoader();
+                                } else {
+                                    Toast.makeText(MapActivity.this, "In order for you to get more Job request, You need to complete your current Job!", Toast.LENGTH_SHORT).show();
+                                }
+                            }
                         }
                     }
                 }
@@ -1284,6 +1184,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
     }
 
+
     public void startJourneyLoader() {
         loaderManager.initLoader(1, null, this);
     }
@@ -1291,5 +1192,115 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     public void clearLoaderManager() {
         loaderManager.destroyLoader(1);
     }
+
+    private void backFromARide() {
+        DocumentReference backFromARideStatus = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            backFromARideStatus = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
+        }
+
+        if (backFromARideStatus != null) {
+            DocumentReference finalBackFromARideStatus = backFromARideStatus;
+            backFromARideStatus.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                @Override
+                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                    DocumentSnapshot doc = task.getResult();
+                    if (doc.exists()) {
+                        boolean backfRide = doc.getBoolean("continueOnline");
+                        if (backfRide) {
+                            finalBackFromARideStatus.update("continueOnline", false).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    if (task.isSuccessful()) {
+                                        locality = doc.getString("state");
+                                        protemp = doc.getString("profession");
+                                        numConnect = safeLongToInt(doc.getLong("connects"));
+                                        connects = numConnect;
+                                        ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
+                                        if (numConnect >= 1) {
+                                            tempButton.callOnClick();
+                                        }
+                                    }
+
+                                }
+                            });
+
+                        }
+
+
+                    }
+                }
+            });
+        }
+    }
+
+    public class getDeviceLocationAsync extends AsyncTask<String, String, String> {
+
+        public LocationManager mLocationManager;
+
+        @Override
+        protected void onPreExecute() {
+            mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            protemp = getProfession();
+            staffID = FirebaseAuth.getInstance().getUid();
+
+            if (currentLocation != null) {
+                // updateMarkersRunnable();
+
+            }
+
+        }
+
+        @Override
+        protected void onProgressUpdate(String... values) {
+
+        }
+
+        @Override
+        protected String doInBackground(String... strings) {
+            locationManager = (LocationManager) MapActivity.this.getSystemService(Context.LOCATION_SERVICE);
+            criteria = new Criteria();
+            bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
+
+            Log.d(TAG, "getDeviceLocation: getting the device current location");
+
+            mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(MapActivity.this);
+
+            try {
+                if (mLocationPermissionGranted) {// check first to see if the permission is granted
+                    mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
+                    mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
+                        @Override
+                        public void onComplete(@NonNull Task<android.location.Location> task) {
+                            if (task.isSuccessful()) {
+                                Location location = task.getResult();
+                                currentLocation = location;
+                                protemp = getProfession();
+                                staffID = FirebaseAuth.getInstance().getUid();
+                                numConnect = getConnect();
+                                //move camera to current location on map
+                                moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
+
+                                backFromARide();
+                            }
+                        }
+
+                    });
+                }
+            } catch (SecurityException e) {
+                Log.d(TAG, "getDeviceLocation: SecurityException:" + e.getMessage());
+            }
+
+            return null;
+        }
+    }
+
 
 }

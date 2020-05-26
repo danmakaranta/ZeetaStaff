@@ -40,6 +40,7 @@ public class RideInformaitonLoader extends AsyncTaskLoader<JourneyInfo> {
     }
 
 
+
     public JourneyInfo getRideInformation() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             rideInformation = FirebaseFirestore.getInstance()
@@ -68,24 +69,26 @@ public class RideInformaitonLoader extends AsyncTaskLoader<JourneyInfo> {
 
                         journeyInfo = new JourneyInfo(pickupLocation, destination, customerID, customerPhoneNumber, distanceCovered, timeStamp, (long) amount, accepted, started, ended);
 
-
                     }
                 }
             });
         }
-        if (journeyInfo == null) {
-            return getRideInformation();
-        } else {
+        if (journeyInfo != null) {
             return journeyInfo;
+        } else {
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                Log.d("recursion error", "recursive error: " + e.getMessage());
+            }
+            return getRideInformation();
         }
-
 
     }
 
     @Override
     public JourneyInfo loadInBackground() {
-        JourneyInfo journeyInfo = getRideInformation();
-        return journeyInfo;
+        return getRideInformation();
     }
 
     @Override

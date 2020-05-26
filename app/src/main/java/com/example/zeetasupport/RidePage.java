@@ -44,6 +44,7 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
@@ -63,6 +64,8 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
+
+import static com.google.firebase.auth.FirebaseAuth.getInstance;
 
 public class RidePage extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnPolylineClickListener, LoaderManager.LoaderCallbacks<JourneyInfo> {
 
@@ -91,6 +94,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     private LoaderManager loaderManager;
     private Button endRide;
     private DocumentReference rideInformation = null;
+    private DatabaseReference ref = null;
 
     public static boolean callPermissions(Context context, String... permissions) {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
@@ -175,6 +179,23 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     }
 
     private void endRide() {
+        DocumentReference updateStatus = FirebaseFirestore.getInstance()
+                .collection("Users").document(Objects.requireNonNull(getInstance().getUid()));
+        updateStatus.update("engaged", false).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                updateStatus.update("continueOnline", true).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        Intent intent = new Intent(RidePage.this, MapActivity.class);
+                        startActivity(intent);
+                        overridePendingTransition(0, 0);
+                    }
+                });
+
+
+            }
+        });
     }
 
     private void startRide() {
@@ -185,7 +206,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
         }
 
-        rideInformation.update("started", "true").addOnCompleteListener(new OnCompleteListener<Void>() {
+        rideInformation.update("started", true).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()) {
@@ -339,7 +360,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
                 Marker marker = mMap.addMarker(new MarkerOptions()
                         .position(endLocation)
-                        .title("Zeeta Rider" + index)
+                        .title("Zeeta Rider")
                         .snippet("Duration: " + polylineData.getLeg().duration + " away"
                         ));
 
@@ -443,12 +464,12 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                 googleMap.addMarker(new MarkerOptions()
                         .icon(BitmapDescriptorFactory.fromResource(R.drawable.car64))
                         .anchor(0.0f, 1.0f)
-                        .position(latLng));
+                        .position(latLng)).setTitle("You");
                 googleMap.getUiSettings().setMyLocationButtonEnabled(true);
                 googleMap.getUiSettings().setZoomControlsEnabled(true);
 
                 // Updates the location and zoom of the MapView
-                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 15);
+                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 13);
                 googleMap.moveCamera(cameraUpdate);
             }
         });
@@ -508,7 +529,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
                                 //move camera to current location on map
                                 if (journeyInfo.getPickupLocation() != null) {
-                                    // moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
                                     showPointerOnMap(currentLocation.getLatitude(), currentLocation.getLongitude());
                                     Log.d(TAG, "checking pick up: " + journeyInfo.getPickupLocation());
                                     calculateDirections(journeyInfo.getPickupLocation());
