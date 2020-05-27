@@ -499,24 +499,48 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
     private void acceptRequest() {
-        //setJobData();
+
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
                 .document(Objects.requireNonNull(getInstance().getUid())).collection("Request").document("ongoing");
-        acceptanceStatus.update("accepted", "Accepted").addOnCompleteListener(new OnCompleteListener<Void>() {
+        DocumentReference updateConnect = FirebaseFirestore.getInstance()
+                .collection("Users").document(FirebaseAuth.getInstance().getUid());
+        updateConnect.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
-            public void onComplete(@NonNull Task<Void> task) {
-                serviceProviderData.update("engaged", true).addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        //deleteOnlinePresence();
-                        if (protemp.equalsIgnoreCase("taxi") || protemp.equalsIgnoreCase("Trycycle(Keke)")) {
-                            startJourneyLoader();
-                        }
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot doc = task.getResult();
+                    if (doc.exists()) {
+                        long connectLong = (long) doc.getLong("connects");
+                        long newValue = connectLong - 1;
+                        String msg = "Connects: " + newValue;
+                        connect.setText(msg);
+                        connects = safeLongToInt(connectLong);
+                        numConnect = connects;
+
+                        updateConnect.update("connects", newValue).addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                if (task.isSuccessful()) {
+                                    acceptanceStatus.update("accepted", "Accepted").addOnCompleteListener(new OnCompleteListener<Void>() {
+                                        @Override
+                                        public void onComplete(@NonNull Task<Void> task) {
+                                            serviceProviderData.update("engaged", true).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                @Override
+                                                public void onComplete(@NonNull Task<Void> task) {
+                                                    //deleteOnlinePresence();
+                                                    if (protemp.equalsIgnoreCase("taxi") || protemp.equalsIgnoreCase("Trycycle(Keke)")) {
+                                                        startJourneyLoader();
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            }
+                        });
                     }
-                });
-
-
+                }
             }
         });
 
@@ -532,15 +556,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
 
     private void deleteOnlinePresence() {
-        //geoFire.removeLocation(FirebaseAuth.getInstance().getUid());
-        geoFire.removeLocation(Objects.requireNonNull(getInstance().getUid()), new GeoFire.CompletionListener() {
-            @Override
-            public void onComplete(String key, DatabaseError error) {
-                ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
-                Log.d("ref", "refff" + ref.toString());
-                geoFire = new GeoFire(ref);
-            }
-        });
+        ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
+        Log.d("ref", "refff" + ref.toString());
+        geoFire = new GeoFire(ref);
+        geoFire.removeLocation(FirebaseAuth.getInstance().getUid());
+
+
     }
 
 
@@ -553,7 +574,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         try {
             DocumentReference locationRef = FirebaseFirestore.getInstance()
                     .collection("AbujaOnline")
-                    .document(getInstance().getUid());
+                    .document(Objects.requireNonNull(getInstance().getUid()));
 
             locationRef.set(userLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
                 @Override
@@ -1194,6 +1215,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
     private void backFromARide() {
+        Log.d(TAG, "BackOnlinecalled");
         DocumentReference backFromARideStatus = null;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             backFromARideStatus = FirebaseFirestore.getInstance()
@@ -1209,6 +1231,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     DocumentSnapshot doc = task.getResult();
                     if (doc.exists()) {
                         boolean backfRide = doc.getBoolean("continueOnline");
+                        Log.d(TAG, "BackOnline called: " + backfRide);
                         if (backfRide) {
                             finalBackFromARideStatus.update("continueOnline", false).addOnCompleteListener(new OnCompleteListener<Void>() {
                                 @Override
@@ -1228,7 +1251,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                             });
 
                         }
-
 
                     }
                 }

@@ -26,6 +26,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.example.zeetasupport.data.GeneralJobData;
 import com.example.zeetasupport.models.PolylineData;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -181,21 +182,42 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     private void endRide() {
         DocumentReference updateStatus = FirebaseFirestore.getInstance()
                 .collection("Users").document(Objects.requireNonNull(getInstance().getUid()));
-        updateStatus.update("engaged", false).addOnCompleteListener(new OnCompleteListener<Void>() {
+
+        DocumentReference serviceProviderJobDataOncloud = FirebaseFirestore.getInstance()
+                .collection("Users").document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()))
+                .collection("RideData").document(journeyInfo.getCustomerID());
+        DocumentReference customerJobDataOncloud = FirebaseFirestore.getInstance()
+                .collection("Customers").document(journeyInfo.getCustomerID())
+                .collection("JobData").document(FirebaseAuth.getInstance().getUid());
+       
+        serviceProviderJobDataOncloud.set(new GeneralJobData(journeyInfo.getPickupLocation(), journeyInfo.getDestination(), null, journeyInfo.getCustomerID(),
+                journeyInfo.getCustomerPhoneNumber(), "needs to be fixed", (long) journeyInfo.getDistanceCovered(), (long) 0, true,
+                true, true, "Transport", journeyInfo.getTimeStamp(), "Completed", (long) journeyInfo.getAmount())).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
-                updateStatus.update("continueOnline", true).addOnCompleteListener(new OnCompleteListener<Void>() {
+                customerJobDataOncloud.set(new GeneralJobData(journeyInfo.getPickupLocation(), journeyInfo.getDestination(), null, FirebaseAuth.getInstance().getUid(),
+                        "needs to be fixed", "needs to be fixed", (long) journeyInfo.getDistanceCovered(), (long) 0, true,
+                        true, true, "Transport", journeyInfo.getTimeStamp(), "Completed", (long) journeyInfo.getAmount())).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
-                        Intent intent = new Intent(RidePage.this, MapActivity.class);
-                        startActivity(intent);
-                        overridePendingTransition(0, 0);
+                        updateStatus.update("engaged", false).addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                updateStatus.update("continueOnline", true).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        Intent intent = new Intent(RidePage.this, MapActivity.class);
+                                        startActivity(intent);
+                                        overridePendingTransition(0, 0);
+                                    }
+                                });
+                            }
+                        });
                     }
                 });
-
-
             }
         });
+
     }
 
     private void startRide() {
