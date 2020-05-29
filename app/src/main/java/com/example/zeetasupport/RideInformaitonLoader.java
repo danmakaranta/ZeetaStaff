@@ -4,6 +4,7 @@ import android.content.AsyncTaskLoader;
 import android.content.Context;
 import android.util.Log;
 
+import com.example.zeetasupport.data.GeneralJobData;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Timestamp;
@@ -18,16 +19,19 @@ import java.util.Objects;
 
 import androidx.annotation.NonNull;
 
-public class RideInformaitonLoader extends AsyncTaskLoader<JourneyInfo> {
+public class RideInformaitonLoader extends AsyncTaskLoader<GeneralJobData> {
 
 
-    JourneyInfo journeyInfo = null;
+    GeneralJobData journeyInfo = null;
     private DocumentReference rideInformation = null;
     private GeoPoint pickupLocation;
+    private String customerName = "";
     private GeoPoint destination;
     private String customerID;
     private String customerPhoneNumber;
     private Long distanceCovered;
+    private boolean arrived;
+    private String status;
     private Long amount;
     private String accepted;
     private Boolean started;
@@ -40,8 +44,7 @@ public class RideInformaitonLoader extends AsyncTaskLoader<JourneyInfo> {
     }
 
 
-
-    public JourneyInfo getRideInformation() {
+    public GeneralJobData getRideInformation() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             rideInformation = FirebaseFirestore.getInstance()
                     .collection("Users")
@@ -55,9 +58,10 @@ public class RideInformaitonLoader extends AsyncTaskLoader<JourneyInfo> {
                 public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                     if (task.isSuccessful()) {
                         DocumentSnapshot doc = task.getResult();
-                        pickupLocation = doc.getGeoPoint("pickupLocation");
+
+                        pickupLocation = doc.getGeoPoint("serviceLocation");
                         destination = doc.getGeoPoint("destination");
-                        customerID = doc.getString("customerID");
+                        customerID = doc.getString("serviceID");
                         distanceCovered = doc.getLong("distanceCovered");
                         customerPhoneNumber = doc.getString("customerPhoneNumber");
                         amount = doc.getLong("amount");
@@ -66,8 +70,15 @@ public class RideInformaitonLoader extends AsyncTaskLoader<JourneyInfo> {
                         ended = doc.getBoolean("ended");
                         timeStamp = doc.getTimestamp("timeStamp");
                         Log.d("data valid", "data:.." + timeStamp);
+                        try {// nothing more but to slow down execution a bit to get results before proceeding
+                            Thread.sleep(2000);
+                        } catch (InterruptedException excp) {
+                            excp.printStackTrace();
+                        }
 
-                        journeyInfo = new JourneyInfo(pickupLocation, destination, customerID, customerPhoneNumber, distanceCovered, timeStamp, (long) amount, accepted, started, ended);
+                        journeyInfo = new GeneralJobData(pickupLocation, destination,
+                                null, customerID, customerPhoneNumber, customerName,
+                                distanceCovered, amount, accepted, started, ended, "ser", timeStamp, status, (long) 0, false, false);
 
                     }
                 }
@@ -87,7 +98,7 @@ public class RideInformaitonLoader extends AsyncTaskLoader<JourneyInfo> {
     }
 
     @Override
-    public JourneyInfo loadInBackground() {
+    public GeneralJobData loadInBackground() {
         return getRideInformation();
     }
 

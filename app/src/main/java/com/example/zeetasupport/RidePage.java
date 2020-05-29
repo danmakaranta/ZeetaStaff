@@ -19,11 +19,13 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.zeetasupport.data.GeneralJobData;
@@ -58,6 +60,7 @@ import com.google.maps.model.DirectionsRoute;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
@@ -66,13 +69,11 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
-import static com.google.firebase.auth.FirebaseAuth.getInstance;
+public class RidePage extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnPolylineClickListener, LoaderManager.LoaderCallbacks<GeneralJobData> {
 
-public class RidePage extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnPolylineClickListener, LoaderManager.LoaderCallbacks<JourneyInfo> {
-
+    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
     private static final String COURSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
-    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
     private static final int ERROR_DIALOG_REQUEST = 9001;
     private static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
     private static final String TAG = "RIDE_PAGE";
@@ -82,8 +83,8 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     public String bestProvider;
     int PERMISSION_ALL = 1;
     String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE};
-    private FusedLocationProviderClient mFusedLocationProviderClient;
     Location currentLocation;
+    Button pickupRiderBtn;
     private String[] PERMISSIONS = {Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE};
     private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationClient;
@@ -91,11 +92,20 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     private GeoApiContext mGeoApiContext;
     private ArrayList<PolylineData> mPolyLinesData = new ArrayList<>();
     private ArrayList<Marker> mTripMarkers = new ArrayList<>();
-    private JourneyInfo journeyInfo;
+    private FusedLocationProviderClient mFusedLocationProviderClient;
     private LoaderManager loaderManager;
     private Button endRide;
+    private GeneralJobData journeyInfo;
+    private Button notify_rider;
+    private TextView wait_timer;
+    private Button startRideBtn;
+    private Button callRider;
+    private Button cancelRideBtn;
     private DocumentReference rideInformation = null;
     private DatabaseReference ref = null;
+    private CountDownTimer waitCountDownTimer;
+    private boolean timerRunning = false;
+    private long timeInMillis = 300000;
 
     public static boolean callPermissions(Context context, String... permissions) {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
@@ -118,10 +128,16 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         if (loaderManager.getLoader(1) != null) {
             loaderManager.initLoader(1, null, RidePage.this);
         }
-        Button pickupRiderBtn = (Button) findViewById(R.id.pick_up_rider);
-        Button callRider = (Button) findViewById(R.id.call_rider);
-        Button startRideBtn = (Button) findViewById(R.id.start_ride);
+        pickupRiderBtn = (Button) findViewById(R.id.pick_up_rider);
+        callRider = (Button) findViewById(R.id.call_rider);
+        startRideBtn = (Button) findViewById(R.id.start_ride);
+        startRideBtn.setEnabled(false);
         endRide = findViewById(R.id.end_ride);
+        notify_rider = findViewById(R.id.notify_rider);
+        cancelRideBtn = findViewById(R.id.cancel_ride);
+        cancelRideBtn.setEnabled(false);//until arrived at pickup location
+        wait_timer = findViewById(R.id.wait_timer);
+        wait_timer.setVisibility(View.INVISIBLE);
 
         startJourneyLoader();
 
@@ -135,11 +151,18 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(android.content.Intent.ACTION_VIEW, Uri.parse("http://maps.google.com/maps?saddr=" + currentLocation.getLatitude()
-                        + "," + currentLocation.getLongitude() + "&daddr=" + journeyInfo.getPickupLocation().getLatitude() + ","
-                        + journeyInfo.getPickupLocation().getLongitude()));
+                        + "," + currentLocation.getLongitude() + "&daddr=" + journeyInfo.getServiceLocation().getLatitude() + ","
+                        + journeyInfo.getDestination().getLongitude()));
                 intent.setClassName("com.google.android.apps.maps", "com.google.android.maps.MapsActivity");
                 startActivity(intent);
                 overridePendingTransition(0, 0);
+            }
+        });
+
+        cancelRideBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                cancelRide();
             }
         });
 
@@ -151,7 +174,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
                     ActivityCompat.requestPermissions(RidePage.this, PERMISSIONS, PERMISSION_ALL);
                 }
-                Intent intent = new Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", journeyInfo.getCustomerPhoneNumber(), null));
+                Intent intent = new Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", journeyInfo.getPhoneNumber(), null));
                 startActivity(intent);
                 overridePendingTransition(0, 0);
             }
@@ -160,9 +183,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         startRideBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startRideBtn.setVisibility(View.INVISIBLE);
-                callRider.setVisibility(View.INVISIBLE);
-                endRide.setVisibility(View.VISIBLE);
+
                 startRide();
             }
         });
@@ -170,10 +191,15 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         endRide.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                endRide.setVisibility(View.INVISIBLE);
-                startRideBtn.setVisibility(View.VISIBLE);
-                callRider.setVisibility(View.VISIBLE);
+
                 endRide();
+            }
+        });
+
+        notify_rider.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                notifyRiderOfArrival();
             }
         });
 
@@ -181,31 +207,38 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
     private void endRide() {
         DocumentReference updateStatus = FirebaseFirestore.getInstance()
-                .collection("Users").document(Objects.requireNonNull(getInstance().getUid()));
+                .collection("Users").document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
 
         DocumentReference serviceProviderJobDataOncloud = FirebaseFirestore.getInstance()
                 .collection("Users").document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()))
-                .collection("RideData").document(journeyInfo.getCustomerID());
+                .collection("RideData").document(journeyInfo.getServiceID());
+
         DocumentReference customerJobDataOncloud = FirebaseFirestore.getInstance()
-                .collection("Customers").document(journeyInfo.getCustomerID())
+                .collection("Customers").document(journeyInfo.getServiceID())
                 .collection("JobData").document(FirebaseAuth.getInstance().getUid());
-       
-        serviceProviderJobDataOncloud.set(new GeneralJobData(journeyInfo.getPickupLocation(), journeyInfo.getDestination(), null, journeyInfo.getCustomerID(),
-                journeyInfo.getCustomerPhoneNumber(), "needs to be fixed", (long) journeyInfo.getDistanceCovered(), (long) 0, true,
-                true, true, "Transport", journeyInfo.getTimeStamp(), "Completed", (long) journeyInfo.getAmount())).addOnCompleteListener(new OnCompleteListener<Void>() {
+
+
+        updateStatus.update("engaged", false).addOnCompleteListener(new OnCompleteListener<Void>() {
+
             @Override
             public void onComplete(@NonNull Task<Void> task) {
-                customerJobDataOncloud.set(new GeneralJobData(journeyInfo.getPickupLocation(), journeyInfo.getDestination(), null, FirebaseAuth.getInstance().getUid(),
-                        "needs to be fixed", "needs to be fixed", (long) journeyInfo.getDistanceCovered(), (long) 0, true,
-                        true, true, "Transport", journeyInfo.getTimeStamp(), "Completed", (long) journeyInfo.getAmount())).addOnCompleteListener(new OnCompleteListener<Void>() {
+                updateStatus.update("continueOnline", true).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
-                        updateStatus.update("engaged", false).addOnCompleteListener(new OnCompleteListener<Void>() {
+
+                        serviceProviderJobDataOncloud.set(new GeneralJobData(journeyInfo.getServiceLocation(), journeyInfo.getDestination(), null, journeyInfo.getServiceID(),
+                                journeyInfo.getPhoneNumber(), "needs to be fixed", journeyInfo.getDistanceCovered(), journeyInfo.getAmountPaid(), "Accepted",
+                                true, true, "Transport", journeyInfo.getTimeStamp(), "Completed", (long) 0, true, false)).addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
-                                updateStatus.update("continueOnline", true).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                Log.d("completed", "completed serviceProvider job update");
+
+                                customerJobDataOncloud.set(new GeneralJobData(journeyInfo.getServiceLocation(), journeyInfo.getDestination(), null, FirebaseAuth.getInstance().getUid(),
+                                        "needs to be fixed", "needs to be fixed", journeyInfo.getDistanceCovered(), journeyInfo.getAmountPaid(), "Accepted",
+                                        true, true, "Transport", journeyInfo.getTimeStamp(), "Completed", (long) 0, true, false)).addOnCompleteListener(new OnCompleteListener<Void>() {
                                     @Override
                                     public void onComplete(@NonNull Task<Void> task) {
+                                        Log.d("engaged", "completed customer job update");
                                         Intent intent = new Intent(RidePage.this, MapActivity.class);
                                         startActivity(intent);
                                         overridePendingTransition(0, 0);
@@ -213,12 +246,123 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                                 });
                             }
                         });
+
                     }
                 });
             }
         });
 
     }
+
+
+    private void notifyRiderOfArrival() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            rideInformation = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
+
+        }
+        rideInformation.update("Arrived", true).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                Toast.makeText(RidePage.this, "Your rider has been notified", Toast.LENGTH_SHORT).show();
+                notify_rider.setEnabled(false);
+                startRideBtn.setEnabled(true);
+                cancelRideBtn.setEnabled(true);
+                pickupRiderBtn.setEnabled(false);
+                startTimer();
+            }
+        });
+    }
+
+    private void startTimer() {
+        wait_timer.setVisibility(View.VISIBLE);
+        waitCountDownTimer = new CountDownTimer(300000, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                timeInMillis = millisUntilFinished;
+                updateTime();
+            }
+
+            @Override
+            public void onFinish() {
+                timerRunning = false;
+                timeInMillis = 300000;
+                wait_timer.setText("Waiting fee added!");
+                Toast.makeText(RidePage.this, "A waiting fee has been added!", Toast.LENGTH_LONG).show();
+            }
+        }.start();
+        timerRunning = true;
+    }
+
+    private void updateTime() {
+        int minutes = (int) (timeInMillis / 1000) / 60;
+        int seconds = (int) (timeInMillis / 1000) % 60;
+
+        String timeformated = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds);
+        wait_timer.setText(timeformated);
+
+    }
+
+    private void stopTimer() {
+        if (timerRunning) {
+            waitCountDownTimer.cancel();
+            timerRunning = false;
+            timeInMillis = 300000;
+            //payWaitingFee = false;
+        }
+        wait_timer.setVisibility(View.INVISIBLE);
+    }
+
+    private void cancelRide() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            rideInformation = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
+
+        }
+
+        DocumentReference updateStatus = FirebaseFirestore.getInstance()
+                .collection("Users").document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
+
+        DocumentReference serviceProviderJobDataOncloud = FirebaseFirestore.getInstance()
+                .collection("Users").document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()))
+                .collection("RideData").document(journeyInfo.getServiceID());
+
+        rideInformation.update("cancelRide", true).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (task.isSuccessful()) {
+                    serviceProviderJobDataOncloud.set(new GeneralJobData(journeyInfo.getServiceLocation(), journeyInfo.getDestination(), null, journeyInfo.getServiceID(),
+                            journeyInfo.getPhoneNumber(), "needs to be fixed", journeyInfo.getDistanceCovered(), (long) 0, "Accepted",
+                            false, false, "Transport", journeyInfo.getTimeStamp(), "Completed", (long) 0,
+                            true, true)).addOnCompleteListener(new OnCompleteListener<Void>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Void> task) {
+                            if (task.isSuccessful()) {
+                                updateStatus.update("engaged", false).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        updateStatus.update("continueOnline", true).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<Void> task) {
+                                                Intent intent = new Intent(RidePage.this, MapActivity.class);
+                                                startActivity(intent);
+                                                overridePendingTransition(0, 0);
+                                            }
+                                        });
+                                    }
+                                });
+
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+    }
+
 
     private void startRide() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
@@ -233,6 +377,11 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()) {
                     Toast.makeText(RidePage.this, "Journey Started!", Toast.LENGTH_SHORT).show();
+                    cancelRideBtn.setVisibility(View.INVISIBLE);
+                    startRideBtn.setVisibility(View.INVISIBLE);
+                    callRider.setEnabled(false);
+                    endRide.setVisibility(View.VISIBLE);
+                    wait_timer.setVisibility(View.INVISIBLE);
                 }
             }
         });
@@ -398,21 +547,20 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     }
 
     @Override
-    public Loader<JourneyInfo> onCreateLoader(int id, Bundle args) {
+    public Loader<GeneralJobData> onCreateLoader(int id, Bundle args) {
         return new RideInformaitonLoader(this);
     }
 
     @Override
-    public void onLoadFinished(Loader<JourneyInfo> loader, JourneyInfo data) {
-        Log.d("loading", "rideinformation loading.." + data.getCustomerID());
-        Log.d("loading", "rideinformation loading.." + data.getPickupLocation());
+    public void onLoadFinished(Loader<GeneralJobData> loader, GeneralJobData data) {
+        Log.d("loading", "rideinformation loading.." + data.getServiceID());
         journeyInfo = data;
         new getDeviceLocationAsync().execute();
 
     }
 
     @Override
-    public void onLoaderReset(Loader<JourneyInfo> loader) {
+    public void onLoaderReset(Loader<GeneralJobData> loader) {
 
     }
 
@@ -466,14 +614,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         }
     }
 
-    private void moveCamera(LatLng latlng, float zoom, String title) {
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
-        //create a marker to drop pin at the location
-        MarkerOptions options = new MarkerOptions().position(latlng);
-        options.title("Driver");
-        mMap.addMarker(options);
-
-    }
 
     private void showPointerOnMap(final double latitude, final double longitude) {
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.rideMap);
@@ -550,10 +690,10 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                                 Log.d(TAG, "RidePage: getting the device current location 3" + location);
 
                                 //move camera to current location on map
-                                if (journeyInfo.getPickupLocation() != null) {
+                                if (journeyInfo.getServiceLocation() != null) {
                                     showPointerOnMap(currentLocation.getLatitude(), currentLocation.getLongitude());
-                                    Log.d(TAG, "checking pick up: " + journeyInfo.getPickupLocation());
-                                    calculateDirections(journeyInfo.getPickupLocation());
+                                    Log.d(TAG, "checking pick up: " + journeyInfo.getServiceLocation());
+                                    calculateDirections(journeyInfo.getServiceLocation());
                                 }
 
                             }

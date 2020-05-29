@@ -37,6 +37,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.zeetasupport.data.GeneralJobData;
 import com.example.zeetasupport.models.PolylineData;
 import com.example.zeetasupport.models.User;
 import com.example.zeetasupport.models.WorkerLocation;
@@ -96,7 +97,7 @@ import static com.example.zeetasupport.util.Constants.PERMISSIONS_REQUEST_ENABLE
 import static com.google.firebase.auth.FirebaseAuth.getInstance;
 
 
-public class MapActivity extends FragmentActivity implements LoaderManager.LoaderCallbacks<JourneyInfo>, LocationListener, OnMapReadyCallback, GoogleMap.OnPolylineClickListener {
+public class MapActivity extends FragmentActivity implements LoaderManager.LoaderCallbacks<GeneralJobData>, LocationListener, OnMapReadyCallback, GoogleMap.OnPolylineClickListener {
 
     private static final String TAG = "MapActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
@@ -1014,18 +1015,31 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     Log.d(TAG, "about to set location and UID to database");
                     if (geoFire == null) {
                         geoFire = new GeoFire(ref);
-                    }
-                    geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
+                        geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
 
-                        @Override
-                        public void onComplete(String key, DatabaseError error) {
-                            if (error != null) {
-                                Log.d(TAG, "there was an error saving location");
-                            } else {
-                                Log.d(TAG, "Location saved successfully");
+                            @Override
+                            public void onComplete(String key, DatabaseError error) {
+                                if (error != null) {
+                                    Log.d(TAG, "there was an error saving location");
+                                } else {
+                                    Log.d(TAG, "Location saved successfully");
+                                }
                             }
-                        }
-                    });
+                        });
+                    } else {
+                        geoFire = new GeoFire(ref);
+                        geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
+
+                            @Override
+                            public void onComplete(String key, DatabaseError error) {
+                                if (error != null) {
+                                    Log.d(TAG, "there was an error saving location");
+                                } else {
+                                    Log.d(TAG, "Location saved successfully");
+                                }
+                            }
+                        });
+                    }
 
                 }
             }
@@ -1100,6 +1114,11 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         connects = safeLongToInt(connectLong);
                         String message = "Connects: " + connects;
                         connect.setText(message);
+                        try {// nothing more but to slow down execution a bit to get results before proceeding
+                            Thread.sleep(2000);
+                        } catch (InterruptedException excp) {
+                            excp.printStackTrace();
+                        }
                         if (aiki == null) {
                             Log.d(TAG, "No data found ");
                         } else {
@@ -1186,12 +1205,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
     @Override
-    public Loader<JourneyInfo> onCreateLoader(int id, Bundle args) {
+    public Loader<GeneralJobData> onCreateLoader(int id, Bundle args) {
         return new RideInformaitonLoader(this);
     }
 
     @Override
-    public void onLoadFinished(Loader<JourneyInfo> loader, JourneyInfo data) {
+    public void onLoadFinished(Loader<GeneralJobData> loader, GeneralJobData data) {
 
         Intent intent = new Intent(MapActivity.this, RidePage.class).putExtra("RideData", (Parcelable) data);
 
@@ -1201,7 +1220,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
     @Override
-    public void onLoaderReset(Loader<JourneyInfo> loader) {
+    public void onLoaderReset(Loader<GeneralJobData> loader) {
 
     }
 
@@ -1232,6 +1251,11 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     if (doc.exists()) {
                         boolean backfRide = doc.getBoolean("continueOnline");
                         Log.d(TAG, "BackOnline called: " + backfRide);
+                        try {// nothing more but to slow down execution a bit to get results before proceeding
+                            Thread.sleep(2000);
+                        } catch (InterruptedException excp) {
+                            excp.printStackTrace();
+                        }
                         if (backfRide) {
                             finalBackFromARideStatus.update("continueOnline", false).addOnCompleteListener(new OnCompleteListener<Void>() {
                                 @Override

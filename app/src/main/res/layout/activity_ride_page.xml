@@ -50,11 +50,11 @@
             android:visibility="invisible" />
 
         <Button
-            android:id="@+id/call_rider"
+            android:id="@+id/cancel_ride"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/custom_button"
-            android:text="@string/call_rider" />
+            android:background="@drawable/online_red"
+            android:text="@string/cancel_ride" />
 
     </LinearLayout>
 
@@ -65,9 +65,46 @@
         android:layout_margin="5dp"
         android:layout_marginTop="5dp"
         android:background="@drawable/custom_button3"
-        android:text="Pickup Rider"
+        android:text="@string/pickup_rider"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/rideMap" />
+
+    <Button
+        android:id="@+id/notify_rider"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:background="@drawable/custom_button3"
+        android:text="@string/arrived_at_pickup"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/rideMap" />
+
+    <Button
+        android:id="@+id/call_rider"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:background="@drawable/custom_button3"
+        android:text="@string/call_rider"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/notify_rider"
+        app:layout_constraintTop_toBottomOf="@+id/rideMap" />
+
+    <TextView
+        android:id="@+id/wait_timer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:layout_marginTop="10dp"
+        android:text="00:00"
+        android:textColor="@color/Black"
+        android:textSize="30sp"
+        app:layout_constraintBottom_toTopOf="@+id/ride_layout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/notify_rider" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
