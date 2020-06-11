@@ -91,6 +91,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         jobsOnCloud = FirebaseFirestore.getInstance()
                 .collection("Users")
                 .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("JobData").document(jobData.getClientID());
+
         jobsOnCloud.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
@@ -248,6 +249,7 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
             @Override
             public void onClick(View v) {
                 if (status.equalsIgnoreCase("Closed")) {
+                    startJobBtn.setEnabled(false);
 
                     if (hoursWorkedLong >= 1) {
                         // custom dialog
@@ -328,12 +330,23 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
 
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
-                        Toast.makeText(Job_Information.this, "Job Closed. Please proceed to create and send invoice", Toast.LENGTH_LONG).show();
-                        status = "";
-                        status = "Closed";
-                        startJobBtn.setEnabled(false);
-                        clsJob.setEnabled(false);
-                        hideDialog();
+                        if (task.isSuccessful()) {
+                            jobsOnCloud.update("accepted", "Accepted").addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    if (task.isSuccessful()) {
+                                        Toast.makeText(Job_Information.this, "Job Closed. Please proceed to create and send invoice", Toast.LENGTH_LONG).show();
+                                        status = "";
+                                        status = "Closed";
+                                        startJobBtn.setEnabled(false);
+                                        clsJob.setEnabled(false);
+                                        hideDialog();
+                                    }
+                                }
+                            });
+
+                        }
+
                     }
                 });
 
@@ -385,9 +398,10 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
                 .collection("Customers")
                 .document(jobData.getClientID()).collection("Invoice").document(FirebaseAuth.getInstance().getUid());
 
-        Invoice invoice = new Invoice(jobData.getClientID(), profession, hoursWorkedLong, amountPaidDouble, false);
+        Invoice invoice = new Invoice(FirebaseAuth.getInstance().getUid(), profession, hoursWorkedLong, amountPaidDouble, false);
+        Invoice invoice2 = new Invoice(jobData.getClientID(), profession, hoursWorkedLong, amountPaidDouble, false);
 
-        spInvoice.set(invoice).addOnCompleteListener(new OnCompleteListener<Void>() {
+        spInvoice.set(invoice2).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 customersInvoice.set(invoice).addOnCompleteListener(new OnCompleteListener<Void>() {

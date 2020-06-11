@@ -49,7 +49,10 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.GeoPoint;
 import com.google.maps.DirectionsApiRequest;
 import com.google.maps.GeoApiContext;
@@ -64,6 +67,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -106,6 +110,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     private CountDownTimer waitCountDownTimer;
     private boolean timerRunning = false;
     private long timeInMillis = 300000;
+    private DocumentReference clientRideRequest;
 
     public static boolean callPermissions(Context context, String... permissions) {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
@@ -191,7 +196,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         endRide.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 endRide();
             }
         });
@@ -203,6 +207,27 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             }
         });
 
+        clientRideRequest = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(FirebaseAuth.getInstance().getUid()).collection("Request").document(Objects.requireNonNull("ongoing"));
+
+        clientRideRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
+                if (documentSnapshot.exists()) {
+                    boolean canceledRide = documentSnapshot.getBoolean("cancelRide");
+                    try {// nothing more but to slow down execution a bit to get results before proceeding
+                        Thread.sleep(2000);
+                    } catch (InterruptedException excp) {
+                        excp.printStackTrace();
+                    }
+                    if (canceledRide) {
+                        cancelRide();
+                    }
+
+                }
+            }
+        });
     }
 
     private void endRide() {
@@ -333,6 +358,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()) {
+                    stopTimer();
                     serviceProviderJobDataOncloud.set(new GeneralJobData(journeyInfo.getServiceLocation(), journeyInfo.getDestination(), null, journeyInfo.getServiceID(),
                             journeyInfo.getPhoneNumber(), "needs to be fixed", journeyInfo.getDistanceCovered(), (long) 0, "Accepted",
                             false, false, "Transport", journeyInfo.getTimeStamp(), "Completed", (long) 0,
@@ -353,7 +379,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                                         });
                                     }
                                 });
-
                             }
                         }
                     });
@@ -376,6 +401,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()) {
+                    stopTimer();
                     Toast.makeText(RidePage.this, "Journey Started!", Toast.LENGTH_SHORT).show();
                     cancelRideBtn.setVisibility(View.INVISIBLE);
                     startRideBtn.setVisibility(View.INVISIBLE);

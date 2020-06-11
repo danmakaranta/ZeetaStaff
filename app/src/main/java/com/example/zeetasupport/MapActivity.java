@@ -245,6 +245,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                 public void onTick(long millisUntilFinished) {
                     protemp = getProfession();
                 }
+
                 @Override
                 public void onFinish() {
                     new getDeviceLocationAsync().execute();
@@ -395,15 +396,26 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     Log.w(TAG, "Listen failed.", e);
                     return;
                 }
+                String acceptedAlready;
+                assert documentSnapshot != null;
+                if (documentSnapshot.exists()) {
+                    acceptedAlready = documentSnapshot.getString("accepted");
+                } else {
+                    acceptedAlready = "";
+                }
+                try {// nothing more but to slow down execution a bit to get results before proceeding
+                    Thread.sleep(2000);
+                } catch (InterruptedException excp) {
+                    excp.printStackTrace();
+                }
 
-                if (documentSnapshot != null && documentSnapshot.exists() && online_status) {
+                if (documentSnapshot.exists() && online_status && acceptedAlready.equalsIgnoreCase("Awaiting")) {
                     Log.d(TAG, "Current data: " + documentSnapshot.getData());
                     Log.d(TAG, "A change has been effected on this doc");
                     String change = documentSnapshot.get("accepted").toString();
                     if (change.equalsIgnoreCase("awaiting")) {
                         incomingRequest = true;
                         ringtone.play();
-
                         incomingRequestDialog.setMessage("You have an incoming request. Do you want to accept it?")
                                 .setCancelable(true)
                                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
@@ -518,7 +530,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         connect.setText(msg);
                         connects = safeLongToInt(connectLong);
                         numConnect = connects;
-
                         updateConnect.update("connects", newValue).addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
@@ -871,7 +882,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
 
-
     @RequiresApi(api = Build.VERSION_CODES.M)
     public boolean isInternetConnection() {
         ConnectivityManager connectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -886,7 +896,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
     private void moveCamera(LatLng latlng, float zoom, String title) {
-        mMap.clear();
+
         //create a marker to drop pin at the location
         MarkerOptions options = new MarkerOptions().position(latlng);
         options.title("You");
@@ -1007,6 +1017,16 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         }
 
 
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
         mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
             @Override
             public void onComplete(@NonNull Task<android.location.Location> task) {
@@ -1105,13 +1125,18 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     if (task.isSuccessful()) {
                         DocumentSnapshot doc = task.getResult();
                         String aiki = (String) doc.get("profession");
+                        Long connectLong = (Long) doc.get("connects");
                         locality = (String) doc.get("state");
                         driverphoneNumber = (String) doc.get("phoneNumber");
                         driverName = (String) doc.get("name");
                         boolean staffEngaged = (boolean) doc.get("engaged");
                         staffID = doc.getString("user_Id");
-                        Long connectLong = (Long) doc.get("connects");
                         connects = safeLongToInt(connectLong);
+                        try {// nothing more but to slow down execution a bit to get results before proceeding
+                            Thread.sleep(2000);
+                        } catch (InterruptedException excp) {
+                            excp.printStackTrace();
+                        }
                         String message = "Connects: " + connects;
                         connect.setText(message);
                         try {// nothing more but to slow down execution a bit to get results before proceeding
