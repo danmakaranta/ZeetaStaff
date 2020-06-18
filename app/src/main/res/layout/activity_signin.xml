@@ -5,75 +5,68 @@
     android:layout_height="match_parent"
     tools:context=".Signin">
 
-    <ScrollView
-        android:id="@+id/login_form"
+    <LinearLayout
+        android:id="@+id/email_login_form"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:orientation="vertical"
+        android:padding="20dp">
 
-        <LinearLayout
-            android:id="@+id/email_login_form"
+
+        <EditText
+            android:id="@+id/email"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:orientation="vertical"
-            android:padding="20dp">
+            android:hint="@string/prompt_email"
+            android:inputType="textEmailAddress"
+            android:maxLines="1" />
 
 
-            <EditText
-                android:id="@+id/email"
-                android:layout_width="match_parent"
+        <EditText
+            android:id="@+id/password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:hint="@string/password"
+            android:inputType="textPassword"
+            android:maxLines="1" />
+
+
+        <RelativeLayout
+            android:id="@+id/relLayout1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/sign_in_button"
+                style="?android:textAppearanceSmall"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:hint="@string/prompt_email"
-                android:inputType="textEmailAddress"
-                android:maxLines="1" />
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="30dp"
+                android:background="@drawable/custom_button"
+                android:text="@string/sign_in"
+                android:textStyle="bold" />
 
-
-            <EditText
-                android:id="@+id/password"
-                android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/register_button"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_below="@id/sign_in_button"
+                android:layout_centerHorizontal="true"
                 android:layout_marginTop="20dp"
-                android:hint="@string/password"
-                android:inputType="textPassword"
-                android:maxLines="1" />
+                android:gravity="center"
+                android:text="Sign up"
+                android:textSize="25sp"
+                android:textStyle="bold" />
 
 
+        </RelativeLayout>
 
-            <RelativeLayout
-                android:id="@+id/relLayout1"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+    </LinearLayout>
 
-                <Button
-                    android:id="@+id/sign_in_button"
-                    style="?android:textAppearanceSmall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_centerHorizontal="true"
-                    android:layout_marginTop="30dp"
-                    android:background="@drawable/custom_button"
-                    android:text="@string/sign_in"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/register_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_centerHorizontal="true"
-                    android:layout_below="@id/sign_in_button"
-                    android:layout_marginTop="20dp"
-                    android:gravity="center"
-                    android:text="Sign up"
-                    android:textSize="25sp"
-                    android:textStyle="bold" />
-
-
-            </RelativeLayout>
-
-        </LinearLayout>
-
-    </ScrollView>
 
     <ProgressBar
         android:id="@+id/progressBar"

@@ -119,6 +119,7 @@ public class LocationService extends Service {
                             User user = ((UserClient) (getApplicationContext())).getUser();
                             GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
                             WorkerLocation userLocation = new WorkerLocation(user, geoPoint, null);
+
                             saveUserLocation(userLocation);
                             Log.d(TAG, "onLocationResult: location of last known not null.");
                         }

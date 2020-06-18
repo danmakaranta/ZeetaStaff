@@ -343,14 +343,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         if (numConnect >= 1) {
                             startLocationService();
                             createOnlinePresence();
-                            online_status = true;
-                            listenForJobRequest();
-                            connect.setVisibility(View.GONE);
-                            tempButton.setText("Go offline");
-                            // tempButton.setBackgroundColor(R.drawable.online_custom_button);
-                            int colorStatus = ContextCompat.getColor(getApplicationContext(), R.color.red3);
-                            tempButton.setTextColor(colorStatus);
-                            Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
 
                         } else {
 
@@ -572,7 +564,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         Log.d("ref", "refff" + ref.toString());
         geoFire = new GeoFire(ref);
         geoFire.removeLocation(FirebaseAuth.getInstance().getUid());
-
 
     }
 
@@ -1042,6 +1033,15 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                 if (error != null) {
                                     Log.d(TAG, "there was an error saving location");
                                 } else {
+                                    online_status = true;
+                                    listenForJobRequest();
+                                    connect.setVisibility(View.GONE);
+                                    tempButton.setText("Go offline");
+                                    // tempButton.setBackgroundColor(R.drawable.online_custom_button);
+                                    int colorStatus = ContextCompat.getColor(getApplicationContext(), R.color.red3);
+                                    tempButton.setTextColor(colorStatus);
+                                    Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
+
                                     Log.d(TAG, "Location saved successfully");
                                 }
                             }
@@ -1055,6 +1055,15 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                 if (error != null) {
                                     Log.d(TAG, "there was an error saving location");
                                 } else {
+                                    online_status = true;
+                                    listenForJobRequest();
+                                    connect.setVisibility(View.GONE);
+                                    tempButton.setText("Go offline");
+                                    // tempButton.setBackgroundColor(R.drawable.online_custom_button);
+                                    int colorStatus = ContextCompat.getColor(getApplicationContext(), R.color.red3);
+                                    tempButton.setTextColor(colorStatus);
+                                    Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
+
                                     Log.d(TAG, "Location saved successfully");
                                 }
                             }

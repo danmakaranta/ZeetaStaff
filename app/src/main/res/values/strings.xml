@@ -83,6 +83,7 @@
     <string name="cancel_ride">Cancel Ride </string>
     <string name="arrived_at_pickup">Arrived at Pickup</string>
     <string name="pickup_rider">Pickup Rider</string>
+    <string name="invoice">Invoice</string>
 
 
 </resources>
