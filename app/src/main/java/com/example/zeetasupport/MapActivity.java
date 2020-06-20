@@ -5,6 +5,7 @@ import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.LoaderManager;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -105,7 +106,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private static final String COURSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
     private static final float DEFAULT_ZOOM = 17f;
-    private static final int LOCATION_UPDATE_INTERVAL2 = 4000;
+    private static final long LOCATION_UPDATE_INTERVAL = 10000;
     final String[] employeeName = new String[1];
     final String[] employeeID = new String[1];
     final String[] phoneNum = new String[1];
@@ -126,9 +127,13 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     DocumentReference acceptanceStatus;
     boolean requestAccepted = false;
     DocumentReference jobData = null;
+    AlertDialog.Builder incomingRequestDialog;
+    AlertDialog alertForRequest;
     //lets use Handler and runnable
     private Handler mHandler = new Handler();
     private Runnable mRunnable;
+    private Runnable locationRunnable;
+    private Handler locationHandler = new Handler();
     private ArrayList<PolylineData> mPolyLinesData = new ArrayList<>();
     private Marker mSelectedMarker = null;
     private boolean mLocationPermissionGranted = false;
@@ -157,7 +162,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private FusedLocationProviderClient locationProviderClient;
     private String locality = "StateNotFound";
     private boolean engaged = false;
-    AlertDialog.Builder incomingRequestDialog;
     private Handler handler;
     private int connects;
     private int numConnect;
@@ -168,9 +172,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private JourneyInfo rideData;
     private LoaderManager loaderManager;
     private DocumentReference serviceProviderData;
-    AlertDialog alertForRequest;
     private boolean backFromARide = false;
     private boolean incomingRequest;
+    private ProgressDialog loadingProgressDialog;
+    private boolean locationCallbackPresent = false;
 
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
@@ -225,6 +230,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         setContentView(R.layout.activity_map);
         connect = findViewById(R.id.connect_view);
 
+        loadingProgressDialog = new ProgressDialog(this);
+        loadingProgressDialog.setMessage("Connecting...");
+        // loadingProgressDialog.show();
+
         incomingRequest = false;
 
         loaderManager = getLoaderManager();
@@ -249,7 +258,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                 @Override
                 public void onFinish() {
                     new getDeviceLocationAsync().execute();
-
                 }
 
             }.start();
@@ -311,7 +319,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             @Override
             public void onClick(View v) {
                 mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
-
+                loadingProgressDialog.dismiss();
                 if (isInternetConnection()) {
                     if (online_status) {
                         online_status = false;
@@ -319,7 +327,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         tempButton.invalidate();
                         connect.setVisibility(View.VISIBLE);
                         connect.setText("Connects: " + numConnect);
-                        //stopLocationUpdates();
 
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
@@ -341,6 +348,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     } else {
 
                         if (numConnect >= 1) {
+                            loadingProgressDialog.show();
                             startLocationService();
                             createOnlinePresence();
 
@@ -571,37 +579,23 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private void buyConnect() {
     }
 
-
-    private void saveUserLocation(final WorkerLocation userLocation) {
-
-        try {
-            DocumentReference locationRef = FirebaseFirestore.getInstance()
-                    .collection("AbujaOnline")
-                    .document(Objects.requireNonNull(getInstance().getUid()));
-
-            locationRef.set(userLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
+    private void locationsRunnable() {
+        if (!locationCallbackPresent) {
+            locationHandler.postDelayed(locationRunnable = new Runnable() {
                 @Override
-                public void onComplete(@NonNull Task<Void> task) {
-                    if (task.isSuccessful()) {
-                        Log.d(TAG, "onComplete: \ninserted user location into database." +
-                                "\n latitude: " + userLocation.getGeoPoint().getLatitude() +
-                                "\n longitude: " + userLocation.getGeoPoint().getLongitude());
-                    } else {
-                        Log.e(TAG, "saveUserLocation: could'nt insert");
-                    }
+                public void run() {
+                    updateGeolocation();
+                    locationHandler.postDelayed(locationRunnable, LOCATION_UPDATE_INTERVAL);
                 }
-            });
-        } catch (NullPointerException e) {
-            Log.e(TAG, "saveUserLocation: User instance is null, stopping location service.");
-            Log.e(TAG, "saveUserLocation: NullPointerException: " + e.getMessage());
+            }, LOCATION_UPDATE_INTERVAL);
+            locationCallbackPresent = true;
         }
 
     }
 
 
     private void stopLocationUpdates() {
-
-        mHandler.removeCallbacks(mRunnable);
+        locationHandler.removeCallbacks(locationRunnable);
     }
 
 
@@ -672,12 +666,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         //check to see if we have a latitude and longitude of the client for the cloud database
                         Log.d(TAG, "Latitude " + geoPoint.getLatitude());
                         Log.d(TAG, "Latitude " + geoPoint.getLongitude());
-
-                       /* MarkerOptions options = new MarkerOptions().position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude())));
-                       // mMap.addMarker(options.position((new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude()))));
-*/
-                        //calculateDirections(geoPoint);
-
 
                     } else {
                         Log.d(TAG, "Document is null for location ");
@@ -1036,8 +1024,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                     online_status = true;
                                     listenForJobRequest();
                                     connect.setVisibility(View.GONE);
+                                    loadingProgressDialog.dismiss();
                                     tempButton.setText("Go offline");
-                                    // tempButton.setBackgroundColor(R.drawable.online_custom_button);
                                     int colorStatus = ContextCompat.getColor(getApplicationContext(), R.color.red3);
                                     tempButton.setTextColor(colorStatus);
                                     Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
@@ -1063,7 +1051,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                     int colorStatus = ContextCompat.getColor(getApplicationContext(), R.color.red3);
                                     tempButton.setTextColor(colorStatus);
                                     Toast.makeText(MapActivity.this, "You are now online, your service may be requested", Toast.LENGTH_SHORT).show();
-
+                                    loadingProgressDialog.dismiss();
                                     Log.d(TAG, "Location saved successfully");
                                 }
                             }
@@ -1117,6 +1105,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
         String message = "Connects: " + connects;
         connect.setText(message);
+
         return connects;
     }
 
@@ -1316,6 +1305,68 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         }
     }
 
+    public void updateGeolocation() {
+        assert protemp != null;
+        for (; (protemp != null ? protemp.length() : 0) < 2; ) {
+            protemp = getProfession();
+            if (protemp != null) {
+                ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
+                geoFire = new GeoFire(ref);
+                updateGeolocation();
+            }
+        }
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
+            @Override
+            public void onComplete(@NonNull Task<android.location.Location> task) {
+                if (task.isSuccessful()) {
+                    Location location = task.getResult();
+                    Log.d(TAG, "about to set location and UID to database");
+                    if (geoFire == null) {
+                        geoFire = new GeoFire(ref);
+                        geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
+
+                            @Override
+                            public void onComplete(String key, DatabaseError error) {
+                                if (error != null) {
+                                    Log.d(TAG, "there was an error saving location");
+                                } else {
+                                    Log.d(TAG, "Location saved successfully");
+                                }
+                            }
+                        });
+                    } else {
+                        geoFire = new GeoFire(ref);
+                        geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
+
+                            @Override
+                            public void onComplete(String key, DatabaseError error) {
+                                if (error != null) {
+                                    Log.d(TAG, "there was an error saving location");
+                                } else {
+
+                                    Log.d(TAG, "Location saved successfully");
+                                }
+                            }
+                        });
+                    }
+
+                }
+            }
+
+        });
+    }
+
     public class getDeviceLocationAsync extends AsyncTask<String, String, String> {
 
         public LocationManager mLocationManager;
@@ -1333,7 +1384,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
             if (currentLocation != null) {
                 // updateMarkersRunnable();
-
+                loadingProgressDialog.dismiss();
             }
 
         }
@@ -1381,6 +1432,5 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             return null;
         }
     }
-
 
 }
