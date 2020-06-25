@@ -149,6 +149,12 @@ public class LocationService extends Service {
                             GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
                             WorkerLocation userLocation = new WorkerLocation(user, geoPoint, null);
                             saveUserLocation(userLocation);
+                            protemp = getProfession();
+                            try {// nothing more but to slow down execution a bit to get results before proceeding
+                                Thread.sleep(3000);
+                            } catch (InterruptedException excp) {
+                                excp.printStackTrace();
+                            }
                             if (protemp != null && staffLocality != null) {
                                 updateGeolocation();
                             } else {
@@ -241,8 +247,9 @@ public class LocationService extends Service {
 
         for (; protemp.length() < 2; ) {
             protemp = getProfession();
-            ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(staffLocality).child(protemp);
-            Log.d("ref", "refff" + ref.toString());
+            if (protemp != null) {
+                ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(staffLocality).child(protemp);
+            }
             geoFire = new GeoFire(ref);
             updateGeolocation();
         }
@@ -266,7 +273,6 @@ public class LocationService extends Service {
                     ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(staffLocality).child(protemp);
                     geoFire = new GeoFire(ref);
 
-                    geoFire = new GeoFire(ref);
                     geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
 
                         @Override

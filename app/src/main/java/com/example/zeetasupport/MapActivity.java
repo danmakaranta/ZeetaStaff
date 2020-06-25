@@ -35,6 +35,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -103,8 +104,11 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private static final String TAG = "MapActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
     private static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
+    private static final String READ_STORAGE_PERMISSION = Manifest.permission.READ_EXTERNAL_STORAGE;
+    private static final String WRITE_STORAGE_PERMISSION = Manifest.permission.WRITE_EXTERNAL_STORAGE;
     private static final String COURSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
+    private static final int STORAGE_PERMISSIONS_REQUEST_CODE = 5678;
     private static final float DEFAULT_ZOOM = 17f;
     private static final long LOCATION_UPDATE_INTERVAL = 10000;
     final String[] employeeName = new String[1];
@@ -131,8 +135,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     AlertDialog alertForRequest;
     //lets use Handler and runnable
     private Handler mHandler = new Handler();
-    private Runnable mRunnable;
-    private Runnable locationRunnable;
     private Handler locationHandler = new Handler();
     private ArrayList<PolylineData> mPolyLinesData = new ArrayList<>();
     private Marker mSelectedMarker = null;
@@ -175,7 +177,13 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private boolean backFromARide = false;
     private boolean incomingRequest;
     private ProgressDialog loadingProgressDialog;
+    private ProgressDialog initializationProgressDialog;
     private boolean locationCallbackPresent = false;
+    private boolean callbackPresent = false;
+    private Runnable mRunnable;
+    private Runnable locationRunnable;
+    private ProgressBar connectP;
+    private boolean mStoragePermissionGranted;
 
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
@@ -198,16 +206,15 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-
+        initializationProgressDialog.show();
         Log.d(TAG, "onMapReady: map is ready here");
         googleMap.getUiSettings().setMyLocationButtonEnabled(true);
         googleMap.getUiSettings().setZoomControlsEnabled(true);
         mMap = googleMap;
         if (mLocationPermissionGranted) {
-
-            new getDeviceLocationAsync().execute();
-
+            //new getDeviceLocationAsync().execute();
         }
+
 
         mMap.setOnPolylineClickListener(this);
     }
@@ -232,9 +239,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
         loadingProgressDialog = new ProgressDialog(this);
         loadingProgressDialog.setMessage("Connecting...");
-        // loadingProgressDialog.show();
+        initializationProgressDialog = new ProgressDialog(this);
+        initializationProgressDialog.setMessage("Udating...");
 
         incomingRequest = false;
+
+        connect.setVisibility(View.VISIBLE);
 
         loaderManager = getLoaderManager();
 
@@ -252,12 +262,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             new CountDownTimer(1000, 3000) {
                 @Override
                 public void onTick(long millisUntilFinished) {
-                    protemp = getProfession();
+                    new getDeviceLocationAsync().execute();
                 }
 
                 @Override
                 public void onFinish() {
-                    new getDeviceLocationAsync().execute();
+
                 }
 
             }.start();
@@ -579,25 +589,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private void buyConnect() {
     }
 
-    private void locationsRunnable() {
-        if (!locationCallbackPresent) {
-            locationHandler.postDelayed(locationRunnable = new Runnable() {
-                @Override
-                public void run() {
-                    updateGeolocation();
-                    locationHandler.postDelayed(locationRunnable, LOCATION_UPDATE_INTERVAL);
-                }
-            }, LOCATION_UPDATE_INTERVAL);
-            locationCallbackPresent = true;
-        }
-
-    }
-
-
-    private void stopLocationUpdates() {
-        locationHandler.removeCallbacks(locationRunnable);
-    }
-
 
     private void getLastKnownLocation() {
         Log.d(TAG, "getLastKnownLocation: called.");
@@ -888,6 +879,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         } else {
             mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.ic_directions_walk_black_24dp));
         }
+        if (initializationProgressDialog.isShowing()) {
+            initializationProgressDialog.dismiss();
+        }
 
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
 
@@ -1013,6 +1007,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     Location location = task.getResult();
                     Log.d(TAG, "about to set location and UID to database");
                     if (geoFire == null) {
+                        ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
+                        Log.d("ref", "refff" + ref.toString());
                         geoFire = new GeoFire(ref);
                         geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
 
@@ -1147,6 +1143,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         } else {
                             Log.d(TAG, aiki);
                             staffOccupation = aiki;
+                            //move camera to current location on map
+                            protemp = aiki;
+                            moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
+                            loadingProgressDialog.dismiss();
                             if (staffEngaged) {
                                 Log.d("engaged", "engaged called " + staffEngaged);
                                 if (aiki.equalsIgnoreCase("Taxi") || aiki.equalsIgnoreCase("Trycycle(Keke)")) {
@@ -1305,16 +1305,22 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         }
     }
 
-    public void updateGeolocation() {
-        assert protemp != null;
-        for (; (protemp != null ? protemp.length() : 0) < 2; ) {
-            protemp = getProfession();
-            if (protemp != null) {
-                ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
-                geoFire = new GeoFire(ref);
-                updateGeolocation();
-            }
+    private void updateMarkersRunnable() {
+        Log.d(TAG, "startUserLocationsRunnable: starting runnable for retrieving updated locations.");
+        if (!callbackPresent) {
+            locationHandler.postDelayed(locationRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    updateMarker();
+                    locationHandler.postDelayed(locationRunnable, 3000);
+                }
+            }, 3000);
+            callbackPresent = true;
         }
+
+    }
+
+    private void updateMarker() {
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
@@ -1330,41 +1336,28 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             @Override
             public void onComplete(@NonNull Task<android.location.Location> task) {
                 if (task.isSuccessful()) {
-                    Location location = task.getResult();
-                    Log.d(TAG, "about to set location and UID to database");
-                    if (geoFire == null) {
-                        geoFire = new GeoFire(ref);
-                        geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
-
-                            @Override
-                            public void onComplete(String key, DatabaseError error) {
-                                if (error != null) {
-                                    Log.d(TAG, "there was an error saving location");
-                                } else {
-                                    Log.d(TAG, "Location saved successfully");
-                                }
-                            }
-                        });
-                    } else {
-                        geoFire = new GeoFire(ref);
-                        geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
-
-                            @Override
-                            public void onComplete(String key, DatabaseError error) {
-                                if (error != null) {
-                                    Log.d(TAG, "there was an error saving location");
-                                } else {
-
-                                    Log.d(TAG, "Location saved successfully");
-                                }
-                            }
-                        });
-                    }
-
+                    currentLocation = task.getResult();
+                    moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "Me!");
                 }
             }
-
         });
+    }
+
+    private void getStoragePermission() {
+        String[] permissions = {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+        if (ContextCompat.checkSelfPermission(this.getApplicationContext(), READ_STORAGE_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this.getApplicationContext(), WRITE_STORAGE_PERMISSION) == PackageManager.PERMISSION_GRANTED) {
+                mStoragePermissionGranted = true;
+
+            } else {
+                ActivityCompat.requestPermissions(this, permissions, STORAGE_PERMISSIONS_REQUEST_CODE);
+            }
+
+        } else {
+
+            ActivityCompat.requestPermissions(this, permissions, STORAGE_PERMISSIONS_REQUEST_CODE);
+        }
+
     }
 
     public class getDeviceLocationAsync extends AsyncTask<String, String, String> {
@@ -1383,7 +1376,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             staffID = FirebaseAuth.getInstance().getUid();
 
             if (currentLocation != null) {
-                // updateMarkersRunnable();
+                updateMarkersRunnable();
                 loadingProgressDialog.dismiss();
             }
 
@@ -1416,9 +1409,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                 protemp = getProfession();
                                 staffID = FirebaseAuth.getInstance().getUid();
                                 numConnect = getConnect();
-                                //move camera to current location on map
-                                moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
-
                                 backFromARide();
                             }
                         }
