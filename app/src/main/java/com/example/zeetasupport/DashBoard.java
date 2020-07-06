@@ -44,7 +44,6 @@ public class DashBoard extends AppCompatActivity {
                         return true;
                     case R.id.jobs_button:
                         startActivity(new Intent(getApplicationContext(), Jobs.class));
-                        overridePendingTransition(0, 0);
                         return true;
                     case R.id.home_button:
                         startActivity(new Intent(getApplicationContext(), MapActivity.class));

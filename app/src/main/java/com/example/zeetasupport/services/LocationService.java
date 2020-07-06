@@ -53,26 +53,26 @@ public class LocationService extends Service {
     private static final String TAG = "LocationService";
 
     private FusedLocationProviderClient mFusedLocationClient;
-    private final static long UPDATE_INTERVAL = 10000;  /* 10 secs */
-    private final static long FASTEST_INTERVAL = 10000; /* 10 sec */
+    private final static long UPDATE_INTERVAL = 5000;  /* 3 secs */
+    private final static long FASTEST_INTERVAL = 5000; /* 3 sec */
     private String staffLocality = "";
     private GeoFire geoFire;
     private String protemp = "";
     private DatabaseReference ref = null;
     private String staffOccupation;
     private boolean locationCallbackPresent = false;
-    private int LOCATION_UPDATE_INTERVAL = 10000;
+    private int LOCATION_UPDATE_INTERVAL = 3000;
     private Runnable locationRunnable;
     private Handler locationHandler = new Handler();
-
 
     @Override
     public void onCreate() {
         super.onCreate();
 
-        new CountDownTimer(1000, 3000) {
+        new CountDownTimer(1000, 2000) {
             @Override
             public void onTick(long millisUntilFinished) {
+
                 protemp = getProfession();
             }
 
@@ -127,7 +127,6 @@ public class LocationService extends Service {
         mLocationRequestHighAccuracy.setInterval(UPDATE_INTERVAL);
         mLocationRequestHighAccuracy.setFastestInterval(FASTEST_INTERVAL);
 
-
         // new Google API SDK v11 uses getFusedLocationProviderClient(this)
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -149,17 +148,11 @@ public class LocationService extends Service {
                             GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
                             WorkerLocation userLocation = new WorkerLocation(user, geoPoint, null);
                             saveUserLocation(userLocation);
-                            protemp = getProfession();
-                            try {// nothing more but to slow down execution a bit to get results before proceeding
-                                Thread.sleep(3000);
-                            } catch (InterruptedException excp) {
-                                excp.printStackTrace();
-                            }
+
                             if (protemp != null && staffLocality != null) {
                                 updateGeolocation();
                             } else {
                                 Log.d(TAG, "at this point we believe protem is null.");
-                                protemp = getProfession();
                                 getBaseOfOperation();
                             }
 
@@ -195,7 +188,6 @@ public class LocationService extends Service {
                 DocumentReference locationRef = FirebaseFirestore.getInstance()
                         .collection(staffLocality)
                         .document(Objects.requireNonNull(getInstance().getUid()));
-
 
                 locationRef.set(userLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
@@ -234,6 +226,7 @@ public class LocationService extends Service {
                     if (task.isSuccessful()) {
                         DocumentSnapshot doc = task.getResult();
                         staffLocality = (String) doc.get("state");
+                        protemp = (String) doc.get("profession");
                         getLocation();
                     }
                 }
@@ -245,14 +238,18 @@ public class LocationService extends Service {
 
     public void updateGeolocation() {
 
-        for (; protemp.length() < 2; ) {
+        /*for (; protemp.length() < 2; ) {
             protemp = getProfession();
             if (protemp != null) {
                 ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(staffLocality).child(protemp);
             }
             geoFire = new GeoFire(ref);
             updateGeolocation();
+        }*/
+        if (protemp != null) {
+            ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(staffLocality).child(protemp);
         }
+        geoFire = new GeoFire(ref);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
@@ -280,7 +277,6 @@ public class LocationService extends Service {
                             if (error != null) {
                                 Log.d(TAG, "there was an error saving location");
                             } else {
-
                                 Log.d(TAG, "Location saved successfully");
                             }
                         }

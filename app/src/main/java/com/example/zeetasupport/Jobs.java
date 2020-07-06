@@ -88,17 +88,6 @@ public class Jobs extends AppCompatActivity {
 
     }
 
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        startActivity(new Intent(Jobs.this, MapActivity.class));
-        overridePendingTransition(0, 0);
-    }
-
-    private void populateRideList() {
-
-    }
-
 
     private void populateJobList() {
         jobsOnCloud.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {

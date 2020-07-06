@@ -19,7 +19,7 @@ import java.util.Objects;
 
 import androidx.annotation.NonNull;
 
-public class RideInformaitonLoader extends AsyncTaskLoader<GeneralJobData> {
+public class RideInformationLoader extends AsyncTaskLoader<GeneralJobData> {
 
 
     GeneralJobData journeyInfo = null;
@@ -39,7 +39,7 @@ public class RideInformaitonLoader extends AsyncTaskLoader<GeneralJobData> {
     private @ServerTimestamp
     Timestamp timeStamp;
 
-    public RideInformaitonLoader(Context context) {
+    public RideInformationLoader(Context context) {
         super(context);
     }
 
@@ -78,7 +78,7 @@ public class RideInformaitonLoader extends AsyncTaskLoader<GeneralJobData> {
 
                         journeyInfo = new GeneralJobData(pickupLocation, destination,
                                 null, customerID, customerPhoneNumber, customerName,
-                                distanceCovered, amount, accepted, started, ended, "ser", timeStamp, status, (long) 0, false, false);
+                                distanceCovered, amount, accepted, started, ended, "Taxi", timeStamp, status, (long) 0, false, false);
 
                     }
                 }

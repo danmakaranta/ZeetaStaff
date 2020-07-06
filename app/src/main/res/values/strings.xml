@@ -84,6 +84,8 @@
     <string name="arrived_at_pickup">Arrived at Pickup</string>
     <string name="pickup_rider">Pickup Rider</string>
     <string name="invoice">Invoice</string>
+    <string name="pay_now">Pay Now</string>
+    <string name="select_your_payment_method">Select Your Payment Method:</string>
 
 
 </resources>

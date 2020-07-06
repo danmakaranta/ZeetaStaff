@@ -76,17 +76,12 @@ import androidx.fragment.app.FragmentActivity;
 public class RidePage extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnPolylineClickListener, LoaderManager.LoaderCallbacks<GeneralJobData> {
 
     public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
-    private static final String COURSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
-    private static final int LOCATION_PERMISSIONS_REQUEST_CODE = 1234;
-    private static final int ERROR_DIALOG_REQUEST = 9001;
-    private static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
     private static final String TAG = "RIDE_PAGE";
-    private static final float DEFAULT_ZOOM = 14f;
+    private static final float DEFAULT_ZOOM = 15f;
     public LocationManager locationManager;
     public Criteria criteria;
     public String bestProvider;
     int PERMISSION_ALL = 1;
-    String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE};
     Location currentLocation;
     Button pickupRiderBtn;
     private String[] PERMISSIONS = {Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE};
@@ -96,7 +91,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     private GeoApiContext mGeoApiContext;
     private ArrayList<PolylineData> mPolyLinesData = new ArrayList<>();
     private ArrayList<Marker> mTripMarkers = new ArrayList<>();
-    private FusedLocationProviderClient mFusedLocationProviderClient;
     private LoaderManager loaderManager;
     private Button endRide;
     private GeneralJobData journeyInfo;
@@ -127,7 +121,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ride_page);
-        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        FusedLocationProviderClient mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
         loaderManager = getLoaderManager();
 
         if (loaderManager.getLoader(1) != null) {
@@ -157,7 +151,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             public void onClick(View v) {
                 Intent intent = new Intent(android.content.Intent.ACTION_VIEW, Uri.parse("http://maps.google.com/maps?saddr=" + currentLocation.getLatitude()
                         + "," + currentLocation.getLongitude() + "&daddr=" + journeyInfo.getServiceLocation().getLatitude() + ","
-                        + journeyInfo.getDestination().getLongitude()));
+                        + journeyInfo.getServiceLocation().getLongitude()));
                 intent.setClassName("com.google.android.apps.maps", "com.google.android.maps.MapsActivity");
                 startActivity(intent);
                 overridePendingTransition(0, 0);
@@ -209,25 +203,29 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
         clientRideRequest = FirebaseFirestore.getInstance()
                 .collection("Users")
-                .document(FirebaseAuth.getInstance().getUid()).collection("Request").document(Objects.requireNonNull("ongoing"));
+                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document(Objects.requireNonNull("ongoing"));
 
-        clientRideRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
-            @Override
-            public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
-                if (documentSnapshot.exists()) {
-                    boolean canceledRide = documentSnapshot.getBoolean("cancelRide");
-                    try {// nothing more but to slow down execution a bit to get results before proceeding
-                        Thread.sleep(2000);
-                    } catch (InterruptedException excp) {
-                        excp.printStackTrace();
+        if (clientRideRequest != null) {
+            clientRideRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
+                @Override
+                public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
+                    if (documentSnapshot.exists()) {
+                        boolean canceledRide = documentSnapshot.getBoolean("cancelRide");
+                        try {// nothing more but to slow down execution a bit to get results before proceeding
+                            Thread.sleep(2000);
+                        } catch (InterruptedException excp) {
+                            excp.printStackTrace();
+                        }
+                        if (canceledRide) {
+                            cancelRide();
+                        }
                     }
-                    if (canceledRide) {
-                        cancelRide();
-                    }
-
                 }
-            }
-        });
+            });
+        } else {
+            cancelRide();
+        }
+
     }
 
     private void endRide() {
@@ -266,17 +264,16 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                                         Log.d("engaged", "completed customer job update");
                                         Intent intent = new Intent(RidePage.this, MapActivity.class);
                                         startActivity(intent);
-                                        overridePendingTransition(0, 0);
+                                        finish();
+                                        //overridePendingTransition(0, 0);
                                     }
                                 });
                             }
                         });
-
                     }
                 });
             }
         });
-
     }
 
 
@@ -372,9 +369,25 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                                         updateStatus.update("continueOnline", true).addOnCompleteListener(new OnCompleteListener<Void>() {
                                             @Override
                                             public void onComplete(@NonNull Task<Void> task) {
-                                                Intent intent = new Intent(RidePage.this, MapActivity.class);
-                                                startActivity(intent);
-                                                overridePendingTransition(0, 0);
+                                                final AlertDialog.Builder builder = new AlertDialog.Builder(RidePage.this);
+                                                builder.setMessage("SORRY,the passenger canceled, please get back to receiving new request?")
+                                                        .setCancelable(false);
+                                                final AlertDialog alert = builder.create();
+                                                new CountDownTimer(3000, 1000) {
+                                                    @Override
+                                                    public void onTick(long millisUntilFinished) {
+                                                        alert.show();
+                                                    }
+
+                                                    @Override
+                                                    public void onFinish() {
+                                                        alert.dismiss();
+                                                        Intent intent = new Intent(RidePage.this, MapActivity.class);
+                                                        startActivity(intent);
+                                                        overridePendingTransition(0, 0);
+                                                    }
+                                                }.start();
+
                                             }
                                         });
                                     }
@@ -455,7 +468,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         DirectionsApiRequest directions = new DirectionsApiRequest(mGeoApiContext);
 
 
-        directions.alternatives(true);
+        directions.alternatives(false);
         directions.origin(
                 new com.google.maps.model.LatLng(
                         currentLocation.getLatitude(),
@@ -557,6 +570,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
                 Marker marker = mMap.addMarker(new MarkerOptions()
                         .position(endLocation)
+                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.passenger))
                         .title("Zeeta Rider")
                         .snippet("Duration: " + polylineData.getLeg().duration + " away"
                         ));
@@ -574,7 +588,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
     @Override
     public Loader<GeneralJobData> onCreateLoader(int id, Bundle args) {
-        return new RideInformaitonLoader(this);
+        return new RideInformationLoader(this);
     }
 
     @Override
@@ -630,7 +644,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                         .create()
                         .show();
 
-
             } else {
                 // No explanation needed, we can request the permission.
                 ActivityCompat.requestPermissions(this,
@@ -657,7 +670,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                 googleMap.getUiSettings().setZoomControlsEnabled(true);
 
                 // Updates the location and zoom of the MapView
-                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 13);
+                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, DEFAULT_ZOOM);
                 googleMap.moveCamera(cameraUpdate);
             }
         });
@@ -684,7 +697,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                 Log.d("ridepage", "ridepage location not null");
                 // moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
                 showPointerOnMap(currentLocation.getLatitude(), currentLocation.getLongitude());
-
             }
 
         }
@@ -713,8 +725,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                             if (task.isSuccessful()) {
                                 Location location = task.getResult();
                                 currentLocation = location;
-                                Log.d(TAG, "RidePage: getting the device current location 3" + location);
-
                                 //move camera to current location on map
                                 if (journeyInfo.getServiceLocation() != null) {
                                     showPointerOnMap(currentLocation.getLatitude(), currentLocation.getLongitude());
@@ -730,10 +740,8 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             } catch (SecurityException e) {
                 Log.d(TAG, "getDeviceLocation: SecurityException:" + e.getMessage());
             }
-
             return null;
         }
     }
-
 
 }
