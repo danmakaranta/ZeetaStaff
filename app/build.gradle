@@ -62,6 +62,8 @@ dependencies {
     implementation 'com.google.firebase:firebase-auth:19.3.1'
     implementation 'com.android.support:recyclerview-v7:29.0.2'
     implementation 'com.braintreepayments:card-form:3.1.1'
+    implementation 'com.treebo:internetavailabilitychecker:1.0.4'
+    implementation group: 'com.github.seratch', name: 'java-time-backport', version: '1.0.0'
 
     def nav_version = "2.2.1"
 

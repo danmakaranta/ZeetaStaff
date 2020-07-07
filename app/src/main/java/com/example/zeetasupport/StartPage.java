@@ -1,6 +1,8 @@
 package com.example.zeetasupport;
 
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.os.Build;
@@ -9,23 +11,29 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.widget.Toast;
 
+import com.treebo.internetavailabilitychecker.InternetAvailabilityChecker;
+import com.treebo.internetavailabilitychecker.InternetConnectivityListener;
+
 import java.util.Objects;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
-public class StartPage extends AppCompatActivity {
+public class StartPage extends AppCompatActivity implements InternetConnectivityListener {
 
     //lets use Handler and runnable
     private Handler mHandler = new Handler();
     private Runnable mRunnable;
-
+    private InternetAvailabilityChecker mInternetAvailabilityChecker;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start_page);
+        InternetAvailabilityChecker.init(this);
+        mInternetAvailabilityChecker = InternetAvailabilityChecker.getInstance();
+        mInternetAvailabilityChecker.addInternetConnectivityListener(this);
         if (isInternetConnection()) {
             new CountDownTimer(3000, 1000) {
                 @Override
@@ -57,4 +65,22 @@ public class StartPage extends AppCompatActivity {
         return Objects.requireNonNull(connectivityManager.getActiveNetworkInfo()).isConnectedOrConnecting();
     }
 
+
+    @Override
+    public void onInternetConnectivityChanged(boolean isConnected) {
+        AlertDialog alertDialog;
+        if (!isConnected) {
+            alertDialog = new AlertDialog.Builder(this).create();
+            alertDialog.setTitle("Connectivity");
+            alertDialog.setMessage("Please check that you are connected to the internet");
+            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            alertDialog.show();
+        }
+
+    }
 }

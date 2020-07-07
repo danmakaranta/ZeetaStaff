@@ -192,6 +192,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private int minPurchaseValue;
     private int temp;
     private int selectedNumberOfConnects;
+    private ProgressDialog transactionProgressDialog;
 
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
@@ -439,7 +440,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         loadingProgressDialog = new ProgressDialog(this);
         loadingProgressDialog.setMessage("Connecting...");
         initializationProgressDialog = new ProgressDialog(this);
-        initializationProgressDialog.setMessage("Udating...");
+        initializationProgressDialog.setMessage("Updating...");
+
+        transactionProgressDialog = new ProgressDialog(this);
+        transactionProgressDialog.setMessage("Please wait...");
 
 
         incomingRequest = false;
@@ -577,7 +581,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
                             final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
 
-                            builder.setMessage("You have 0 connects, you need to purchase connects and try again!")
+                            builder.setMessage("You have 0 connects. Do you want to buy connects and try again?")
                                     .setCancelable(true)
                                     .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                                         public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
@@ -1112,6 +1116,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                             connect.setText(msg);
                             connects = safeLongToInt(connectLong);
                             numConnect = connects;
+                            if (transactionProgressDialog.isShowing()) {
+                                transactionProgressDialog.dismiss();
+                            }
 
                         }
                     }
@@ -1460,21 +1467,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
         totalPurchased.setText("N" + (Integer.parseInt(connectsInputET.getText().toString())) * connectRate);
 
-        /*connectsInputET.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                selectedNumberOfConnects = minPurchaseValue;
-                int connectInput = Integer.parseInt(connectsInputET.getText().toString());
-                if (connectInput < minPurchaseValue) {
-                    connectsInputET.setText(""+minPurchaseValue);
-                    selectedNumberOfConnects = minPurchaseValue;
-                }else{
-                    selectedNumberOfConnects = connectInput;
-                }
-                Log.d(TAG, "selected number of connects: EditText "+ selectedNumberOfConnects);
-            }
-        });*/
-
 
         minusConnectBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1540,19 +1532,53 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         TransactionData transactionData;
                         Timestamp transacTime = Timestamp.now();
                         String detail = selectedNumberOfConnects + " Connects purchase";
+                        transactionProgressDialog.show();
                         transactionData = new TransactionData(detail, FirebaseAuth.getInstance().getUid(), true, (long) amountToPurchase,
                                 transacTime, null, "wallet");
                         DocumentReference newPurchase = FirebaseFirestore.getInstance()
                                 .collection("ConnectPurchase").document("newRequest")
                                 .collection(FirebaseAuth.getInstance().getUid()).document();
+                        DocumentReference walletUpdate = FirebaseFirestore.getInstance()
+                                .collection("Users").document(FirebaseAuth.getInstance().getUid())
+                                .collection("Wallet").document("ZeetaAccount");
+                        DocumentReference transactionsUpdate = FirebaseFirestore.getInstance()
+                                .collection("Users").document(FirebaseAuth.getInstance().getUid())
+                                .collection("Transactions").document();
+                        DocumentReference connectref = FirebaseFirestore.getInstance()
+                                .collection("Users")
+                                .document(Objects.requireNonNull(getInstance().getUid()));
+
                         newPurchase.set(transactionData).addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
                                 connect.setText("Connects: " + selectedNumberOfConnects);// just for testing purposes
+                                waletBalance = waletBalance - amountToPurchase;
+
+                                walletUpdate.update("balance", waletBalance).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        connectref.update("connects", numConnect + selectedNumberOfConnects).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<Void> task) {
+                                                transactionsUpdate.set(transactionData).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                    @Override
+                                                    public void onComplete(@NonNull Task<Void> task) {
+                                                        if (task.isSuccessful()) {
+                                                            payWithWaletDialog.dismiss();
+                                                            getConnect();
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                        });
+
+                                    }
+                                });
                             }
                         });
 
-
+                    } else {
+                        Toast.makeText(MapActivity.this, "Your wallet balance is insuffucient for this purchase", Toast.LENGTH_SHORT).show();
                     }
                 }
             }
@@ -1580,16 +1606,17 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     if (task.isSuccessful()) {
                         DocumentSnapshot doc = task.getResult();
                         if (doc.exists()) {
-                            Long temp = (Long) doc.getLong("balance");
-                            if (temp != null) {
-                                waletBalance = temp.doubleValue();
-                                if (waletBalance < 500) {
+                            Long tempBalance = (Long) doc.getLong("balance");
+                            if (tempBalance != null) {
+                                waletBalance = tempBalance.doubleValue();
+                                walletBalancetxt.setText("N" + waletBalance);
+                                int tempPurchaseValue = connectRate * minPurchaseValue;
+                                if (waletBalance < tempPurchaseValue) {
                                     walletBalancetxt.setEnabled(false);
                                     walletIcon.setEnabled(false);
                                 } else {
                                     walletBalancetxt.setEnabled(true);
                                     walletIcon.setEnabled(true);
-                                    walletBalancetxt.setText("N" + waletBalance);
                                 }
 
                                 Log.d(TAG, "walet balance " + waletBalance);
