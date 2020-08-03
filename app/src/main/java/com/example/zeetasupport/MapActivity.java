@@ -193,6 +193,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private int temp;
     private int selectedNumberOfConnects;
     private ProgressDialog transactionProgressDialog;
+    private String serviceProviderRating;
+    private Boolean suspended = false;
+    private String suspensionMessage;
 
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
@@ -530,7 +533,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         overridePendingTransition(0, 0);
                         return true;
                     case R.id.dashboard_button:
-                        startActivity(new Intent(getApplicationContext(), DashBoard.class));
+                        Intent dashIntent = new Intent(getApplicationContext(), FashionDesignerDashboard.class).putExtra("walletBalance", waletBalance);
+                        dashIntent.putExtra("connects", connects);
+                        dashIntent.putExtra("rating", serviceProviderRating);
+                        startActivity(dashIntent);
                         //overridePendingTransition(0, 0);
                         return true;
                 }
@@ -553,29 +559,35 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         connect.setVisibility(View.VISIBLE);
                         connect.setText("Connects: " + numConnect);
 
+                        if (Looper.myLooper().isCurrentThread() || Looper.getMainLooper().isCurrentThread()) {
+                            stopService(serviceIntent);
+                            //stopLocationUpdates();
+                            Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
+                            deleteOnlinePresence();
+                            numConnect = getConnect();
+                            int colorStatus = ContextCompat.getColor(getApplicationContext(), R.color.White);
+                            tempButton.setTextColor(colorStatus);
+                            String msg = "Connects: " + numConnect;
+                            connect.setText(msg);
+                            connect.invalidate();
+                            stopListenningForRequest();
+                        }
+
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
-                            if (Looper.myLooper().isCurrentThread() || Looper.getMainLooper().isCurrentThread()) {
-                                stopService(serviceIntent);
-                                //stopLocationUpdates();
-                                Toast.makeText(MapActivity.this, "You are now offline and will not be able to get orders", Toast.LENGTH_SHORT).show();
-                                deleteOnlinePresence();
-                                numConnect = getConnect();
-                                int colorStatus = ContextCompat.getColor(getApplicationContext(), R.color.White);
-                                tempButton.setTextColor(colorStatus);
-                                String msg = "Connects: " + numConnect;
-                                connect.setText(msg);
-                                connect.invalidate();
-                                stopListenningForRequest();
-                            }
+
                         }
 
                     } else {
 
                         if (numConnect >= 1) {
-                            loadingProgressDialog.show();
-                            startLocationService();
-                            createOnlinePresence();
+                            if (suspended) {
+                                showSuspensionMessage(suspensionMessage);
+                            } else {
+                                loadingProgressDialog.show();
+                                startLocationService();
+                                createOnlinePresence();
+                            }
 
                         } else {
 
@@ -880,6 +892,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
 
+        if (suspended) {
+            showSuspensionMessage(suspensionMessage);
+        }
+
     }
 
 
@@ -1097,35 +1113,35 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
         DocumentReference connectref = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            connectref = FirebaseFirestore.getInstance()
-                    .collection("Users")
-                    .document(Objects.requireNonNull(getInstance().getUid()));
+
         }
+        connectref = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(Objects.requireNonNull(getInstance().getUid()));
 
-        if (connectref != null) {
-            connectref.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+        connectref.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
 
-                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                    if (task.isSuccessful()) {
-                        DocumentSnapshot doc = task.getResult();
-                        Long connectLong = (Long) doc.get("connects");
-                        if (connectLong == null) {
-                            Log.d(TAG, "No data found ");
-                        } else {
-                            String msg = "Connects: " + connectLong.toString();
-                            connect.setText(msg);
-                            connects = safeLongToInt(connectLong);
-                            numConnect = connects;
-                            if (transactionProgressDialog.isShowing()) {
-                                transactionProgressDialog.dismiss();
-                            }
-
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot doc = task.getResult();
+                    Long connectLong = (Long) doc.get("connects");
+                    serviceProviderRating = (String) doc.getString("rating");
+                    if (connectLong == null) {
+                        Log.d(TAG, "No data found ");
+                    } else {
+                        String msg = "Connects: " + connectLong.toString();
+                        connect.setText(msg);
+                        connects = safeLongToInt(connectLong);
+                        numConnect = connects;
+                        if (transactionProgressDialog.isShowing()) {
+                            transactionProgressDialog.dismiss();
                         }
+
                     }
                 }
+            }
 
-            });
-        }
+        });
 
         String message = "Connects: " + connects;
         connect.setText(message);
@@ -1135,33 +1151,37 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
     public String getProfession() {
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-            serviceProviderData = FirebaseFirestore.getInstance()
-                    .collection("Users")
-                    .document(Objects.requireNonNull(getInstance().getUid()));
-        }
-        if (serviceProviderData != null) {
-            serviceProviderData.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                    if (task.isSuccessful()) {
-                        DocumentSnapshot doc = task.getResult();
-                        String aiki = (String) doc.get("profession");
-                        Long connectLong = (Long) doc.get("connects");
-                        locality = (String) doc.get("state");
-                        driverphoneNumber = (String) doc.get("phoneNumber");
-                        driverName = (String) doc.get("name");
-                        boolean staffEngaged = (boolean) doc.get("engaged");
-                        boolean backOnline = (boolean) doc.get("continueOnline");
-                        staffID = doc.getString("user_Id");
-                        connects = safeLongToInt(connectLong);
-                        try {// nothing more but to slow down execution a bit to get results before proceeding
-                            Thread.sleep(2000);
-                        } catch (InterruptedException excp) {
-                            excp.printStackTrace();
-                        }
-                        String message = "Connects: " + connects;
-                        connect.setText(message);
+        serviceProviderData = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(Objects.requireNonNull(getInstance().getUid()));
+
+        serviceProviderData.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot doc = task.getResult();
+                    String aiki = (String) doc.get("profession");
+                    Long connectLong = (Long) doc.get("connects");
+                    locality = (String) doc.get("state");
+                    driverphoneNumber = (String) doc.get("phoneNumber");
+                    driverName = (String) doc.get("name");
+                    boolean staffEngaged = (boolean) doc.get("engaged");
+                    boolean backOnline = (boolean) doc.get("continueOnline");
+                    staffID = doc.getString("user_Id");
+                    connects = safeLongToInt(connectLong);
+                    suspended = doc.getBoolean("suspended");
+                    try {// nothing more but to slow down execution a bit to get results before proceeding
+                        Thread.sleep(2000);
+                    } catch (InterruptedException excp) {
+                        excp.printStackTrace();
+                    }
+                    String message = "Connects: " + connects;
+                    connect.setText(message);
+                    if (suspended) {
+                        suspensionMessage = doc.getString("suspensionMessage");
+                        loadingProgressDialog.dismiss();
+
+                    } else {
                         if (aiki == null) {
                             Log.d(TAG, "No data found ");
                         } else {
@@ -1185,14 +1205,31 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         }
                     }
                 }
+            }
 
-            });
-        }
+        });
 
         return staffOccupation;
 
     }
 
+    private void showSuspensionMessage(String msg) {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(MapActivity.this);
+
+        builder.setMessage(msg)
+                .setCancelable(true)
+                .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                    public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                        dialog.dismiss();
+                    }
+                });
+
+        final AlertDialog alert = builder.create();
+        alert.setTitle("Suspension!");
+        alert.setIcon(R.drawable.zeetaicon);
+        alert.show();
+
+    }
 
     @Override
     public void onPolylineClick(Polyline polyline) {
@@ -1301,12 +1338,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         Intent intent = new Intent(MapActivity.this, RidePage.class).putExtra("RideData", (Parcelable) data);
 
         intent.putExtra("RideData", data);
-        /*intent.putExtra("servicePLongitude", data.getServiceProviderLocation().getLongitude());
+        intent.putExtra("servicePLongitude", data.getServiceProviderLocation().getLongitude());
         intent.putExtra("servicePLatitude", data.getServiceProviderLocation().getLatitude());
         intent.putExtra("pickupLongitude", data.getServiceLocation().getLongitude());
         intent.putExtra("pickupLatitude", data.getServiceLocation().getLatitude());
         intent.putExtra("destinationLongitude", data.getDestination().getLongitude());
-        intent.putExtra("destinationLatitude", data.getDestination().getLatitude());*/
+        intent.putExtra("destinationLatitude", data.getDestination().getLatitude());
         startActivity(intent);
     }
 
@@ -1366,50 +1403,47 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private void backFromARide() {
         Log.d(TAG, "BackOnlinecalled");
         DocumentReference backFromARideStatus = null;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-            backFromARideStatus = FirebaseFirestore.getInstance()
-                    .collection("Users")
-                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
-        }
 
-        if (backFromARideStatus != null) {
-            DocumentReference finalBackFromARideStatus = backFromARideStatus;
-            backFromARideStatus.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                    DocumentSnapshot doc = task.getResult();
-                    if (doc.exists()) {
-                        boolean backfRide = doc.getBoolean("continueOnline");
-                        Log.d(TAG, "BackOnline called: " + backfRide);
-                        try {// nothing more but to slow down execution a bit to get results before proceeding
-                            Thread.sleep(1000);
-                        } catch (InterruptedException excp) {
-                            excp.printStackTrace();
-                        }
-                        if (backfRide) {
-                            finalBackFromARideStatus.update("continueOnline", false).addOnCompleteListener(new OnCompleteListener<Void>() {
-                                @Override
-                                public void onComplete(@NonNull Task<Void> task) {
-                                    if (task.isSuccessful()) {
-                                        locality = doc.getString("state");
-                                        protemp = doc.getString("profession");
-                                        numConnect = safeLongToInt(doc.getLong("connects"));
-                                        connects = numConnect;
-                                        ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
-                                        if (numConnect >= 1) {
-                                            tempButton.callOnClick();
-                                        }
+        backFromARideStatus = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()));
+
+        DocumentReference finalBackFromARideStatus = backFromARideStatus;
+        backFromARideStatus.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                DocumentSnapshot doc = task.getResult();
+                if (doc.exists()) {
+                    boolean backfRide = doc.getBoolean("continueOnline");
+                    Log.d(TAG, "BackOnline called: " + backfRide);
+                    try {// nothing more but to slow down execution a bit to get results before proceeding
+                        Thread.sleep(1000);
+                    } catch (InterruptedException excp) {
+                        excp.printStackTrace();
+                    }
+                    if (backfRide) {
+                        finalBackFromARideStatus.update("continueOnline", false).addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                if (task.isSuccessful()) {
+                                    locality = doc.getString("state");
+                                    protemp = doc.getString("profession");
+                                    numConnect = safeLongToInt(doc.getLong("connects"));
+                                    connects = numConnect;
+                                    ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
+                                    if (numConnect >= 1) {
+                                        tempButton.callOnClick();
                                     }
-
                                 }
-                            });
 
-                        }
+                            }
+                        });
 
                     }
+
                 }
-            });
-        }
+            }
+        });
     }
 
     @Override
@@ -1445,7 +1479,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         creditCIcon.setOnClickListener(v -> buyWithCard());
 
         connectDialog.show();
-        waletBalanceUpdate();
+        walletBalanceUpdate();
 
     }
 
@@ -1534,7 +1568,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         String detail = selectedNumberOfConnects + " Connects purchase";
                         transactionProgressDialog.show();
                         transactionData = new TransactionData(detail, FirebaseAuth.getInstance().getUid(), true, (long) amountToPurchase,
-                                transacTime, null, "wallet");
+                                transacTime, null, "Wallet Debit");
                         DocumentReference newPurchase = FirebaseFirestore.getInstance()
                                 .collection("ConnectPurchase").document("newRequest")
                                 .collection(FirebaseAuth.getInstance().getUid()).document();
@@ -1590,27 +1624,25 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
     }
 
-    private void waletBalanceUpdate() {
+    private void walletBalanceUpdate() {
 
         DocumentReference waletref = null;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            waletref = FirebaseFirestore.getInstance()
-                    .collection("Users")
-                    .document(Objects.requireNonNull(getInstance().getUid())).collection("Wallet").document("ZeetaAccount");
-        }
+        waletref = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(Objects.requireNonNull(getInstance().getUid())).collection("Wallet").document("ZeetaAccount");
 
-        if (waletref != null) {
-            waletref.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                    if (task.isSuccessful()) {
-                        DocumentSnapshot doc = task.getResult();
-                        if (doc.exists()) {
-                            Long tempBalance = (Long) doc.getLong("balance");
-                            if (tempBalance != null) {
-                                waletBalance = tempBalance.doubleValue();
+        waletref.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot doc = task.getResult();
+                    if (doc.exists()) {
+                        Long tempBalance = (Long) doc.getLong("balance");
+                        if (tempBalance != null) {
+                            waletBalance = tempBalance.doubleValue();
+                            int tempPurchaseValue = connectRate * minPurchaseValue;
+                            if (walletBalancetxt != null) {
                                 walletBalancetxt.setText("N" + waletBalance);
-                                int tempPurchaseValue = connectRate * minPurchaseValue;
                                 if (waletBalance < tempPurchaseValue) {
                                     walletBalancetxt.setEnabled(false);
                                     walletIcon.setEnabled(false);
@@ -1618,14 +1650,13 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                     walletBalancetxt.setEnabled(true);
                                     walletIcon.setEnabled(true);
                                 }
-
-                                Log.d(TAG, "walet balance " + waletBalance);
                             }
+
                         }
                     }
                 }
-            });
-        }
+            }
+        });
 
     }
 
@@ -1648,6 +1679,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                 loadingProgressDialog.dismiss();
                 moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
                 updateMarkersRunnable();
+                if (suspended) {
+                    tempButton.setEnabled(false);
+                }
             }
 
         }
@@ -1688,7 +1722,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                         protemp = getProfession();
                                         staffID = FirebaseAuth.getInstance().getUid();
                                         numConnect = getConnect();
-
+                                        walletBalanceUpdate();
                                     }
 
                                     @Override

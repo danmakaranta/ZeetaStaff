@@ -23,7 +23,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".CreditCardLayout"></activity>
+        <activity android:name=".FashionDesignerDashboard"></activity>
+        <activity android:name=".CreditCardLayout" />
         <activity android:name=".RidePage" />
         <activity
             android:name=".StartPage"

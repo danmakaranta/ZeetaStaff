@@ -39,6 +39,7 @@ public class JobAdapter extends ArrayAdapter<JobsInfo> {
 
         // Find the TextView in the list_item.xml layout with the ID version_name
         TextView nameTextView = (TextView) listItemView.findViewById(R.id.job_client_name);
+        assert jobsInfo != null;
         String nameTemp = "" + jobsInfo.getName();
         nameTextView.setText(nameTemp);
 
