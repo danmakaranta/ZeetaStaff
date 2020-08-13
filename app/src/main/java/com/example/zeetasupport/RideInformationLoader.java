@@ -34,10 +34,12 @@ public class RideInformationLoader extends AsyncTaskLoader<GeneralJobData> {
     private String status;
     private Long amount;
     private String accepted;
+    private String paymentType;
     private Boolean started;
     private Boolean ended;
     private @ServerTimestamp
     Timestamp timeStamp;
+    private GeoPoint serviceProviderLocation;
 
     public RideInformationLoader(Context context) {
         super(context);
@@ -58,18 +60,21 @@ public class RideInformationLoader extends AsyncTaskLoader<GeneralJobData> {
                 public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                     if (task.isSuccessful()) {
                         DocumentSnapshot doc = task.getResult();
-
                         pickupLocation = doc.getGeoPoint("serviceLocation");
                         destination = doc.getGeoPoint("destination");
+                        serviceProviderLocation = doc.getGeoPoint("serviceProviderLocation");
                         customerID = doc.getString("serviceID");
                         distanceCovered = doc.getLong("distanceCovered");
-                        customerPhoneNumber = doc.getString("customerPhoneNumber");
-                        amount = doc.getLong("amount");
+                        customerPhoneNumber = doc.getString("phoneNumber");
+                        amount = doc.getLong("amountPaid");
                         started = doc.getBoolean("started");
                         accepted = doc.getString("accepted");
+                        paymentType = doc.getString("paymentMethod");
                         ended = doc.getBoolean("ended");
                         timeStamp = doc.getTimestamp("timeStamp");
-                        Log.d("data valid", "data:.." + timeStamp);
+                        customerName = doc.getString("username");
+                        String serviceRendered = doc.getString("serviceRendered");
+
                         try {// nothing more but to slow down execution a bit to get results before proceeding
                             Thread.sleep(2000);
                         } catch (InterruptedException excp) {
@@ -77,8 +82,9 @@ public class RideInformationLoader extends AsyncTaskLoader<GeneralJobData> {
                         }
 
                         journeyInfo = new GeneralJobData(pickupLocation, destination,
-                                null, customerID, customerPhoneNumber, customerName,
-                                distanceCovered, amount, accepted, started, ended, "Taxi", timeStamp, status, (long) 0, false, false);
+                                serviceProviderLocation, customerID, customerPhoneNumber, customerName,
+                                distanceCovered, amount, accepted, started, ended, serviceRendered,
+                                timeStamp, status, (long) 0, false, false, paymentType);
 
                     }
                 }

@@ -6,6 +6,7 @@ import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -15,6 +16,7 @@ import android.widget.Toast;
 
 import com.example.zeetasupport.adapters.JobAdapter;
 import com.example.zeetasupport.data.CompletedJobs;
+import com.example.zeetasupport.data.GeneralJobData;
 import com.example.zeetasupport.data.JobsInfo;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -39,17 +41,33 @@ import androidx.appcompat.app.AppCompatActivity;
 public class Jobs extends AppCompatActivity {
 
     final ArrayList<JobsInfo> jobsList = new ArrayList<JobsInfo>();
+    final ArrayList<GeneralJobData> generalJobsList = new ArrayList<GeneralJobData>();
     final ArrayList<CompletedJobs> completedjobsList = new ArrayList<CompletedJobs>();
-    CollectionReference jobsOnCloud = FirebaseFirestore.getInstance()
-            .collection("Users")
-            .document(FirebaseAuth.getInstance().getUid()).collection("JobData");
+    CollectionReference jobsOnCloud;
     private String status;
+    private String protemp, serviceProviderRating;
+    private double walletBalance;
+    private int connects;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_jobs);
+        protemp = getIntent().getStringExtra("protemp");
+        serviceProviderRating = getIntent().getStringExtra("rating");
+        connects = getIntent().getIntExtra("connects", 0);
+        walletBalance = getIntent().getDoubleExtra("walletBalance", 0.0);
+
+        if (protemp.equalsIgnoreCase("taxi") || protemp.equalsIgnoreCase("Tricycle(keke)")) {
+            jobsOnCloud = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(FirebaseAuth.getInstance().getUid()).collection("RideData");
+        } else {
+            jobsOnCloud = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(FirebaseAuth.getInstance().getUid()).collection("JobData");
+        }
 
         //initialize and assign variables for the bottom navigation
         BottomNavigationView bottomNavigationView = findViewById(R.id.nav_view);
@@ -67,8 +85,21 @@ public class Jobs extends AppCompatActivity {
                         overridePendingTransition(0, 0);
                         return true;
                     case R.id.dashboard_button:
-                        startActivity(new Intent(getApplicationContext(), DashBoard.class));
-                        overridePendingTransition(0, 0);
+                        if (protemp.equalsIgnoreCase("fashion designer")) {
+                            Intent dashIntent = new Intent(getApplicationContext(), FashionDesignerDashboard.class).putExtra("walletBalance", walletBalance);
+                            dashIntent.putExtra("protemp", protemp);
+                            dashIntent.putExtra("connects", connects);
+                            dashIntent.putExtra("rating", serviceProviderRating);
+                            dashIntent.putExtra("walletBalance", walletBalance);
+                            startActivity(dashIntent);
+                        } else {
+                            Intent dashIntent = new Intent(getApplicationContext(), DashBoard.class).putExtra("walletBalance", walletBalance);
+                            dashIntent.putExtra("protemp", protemp);
+                            dashIntent.putExtra("connects", connects);
+                            dashIntent.putExtra("walletBalance", walletBalance);
+                            dashIntent.putExtra("rating", serviceProviderRating);
+                            startActivity(dashIntent);
+                        }
                         return true;
                 }
                 return false;
@@ -99,10 +130,10 @@ public class Jobs extends AppCompatActivity {
 
                         for (QueryDocumentSnapshot document : task.getResult()) {
 
-                            String name = document.getData().get("name").toString();
+                            String name = Objects.requireNonNull(document.getData().get("name")).toString();
                             Timestamp date = (Timestamp) document.getData().get("timeStamp");
                             Long amount = (Long) document.getData().get("amountPaid");
-                            status = document.getData().get("status").toString();
+                            status = Objects.requireNonNull(document.getData().get("status")).toString();
                             assert amount != null;
                             Double amountPaid = amount.doubleValue();
                             String phoneNumber = Objects.requireNonNull(document.getData().get("phoneNumber")).toString();
@@ -111,7 +142,11 @@ public class Jobs extends AppCompatActivity {
                             String clientID = document.getData().get("serviceID").toString();
                             String startedStr = Objects.requireNonNull(document.getData().get("started")).toString();
                             boolean started = Boolean.parseBoolean(startedStr);
+                            long distanceCovered = document.getLong("distanceCovered");
+                            GeoPoint pickUp = document.getGeoPoint("serviceLocation");
+                            GeoPoint destination = document.getGeoPoint("destination");
                             jobsList.add(new JobsInfo(name, amountPaid, date, phoneNumber, clientID, status, hoursWorked, gp, started));
+
                             ListAdapter myAdapter = new JobAdapter(Jobs.this, jobsList, 1);
                             ListView myListView = (ListView) findViewById(R.id.jobs_completed2);
 
@@ -122,10 +157,17 @@ public class Jobs extends AppCompatActivity {
                                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
                                     JobsInfo tempjobsList = (JobsInfo) myListView.getItemAtPosition(position);
-
                                     Intent intent = new Intent(Jobs.this, Job_Information.class).putExtra("JobData", (Parcelable) tempjobsList);
+                                    intent.putExtra("protemp", protemp);
+                                    intent.putExtra("walletBalance", walletBalance);
+                                    Log.d("TestID", "Id of the document" + tempjobsList.getClientID());
+                                    intent.putExtra("connects", connects);
+                                    intent.putExtra("distanceCovered", distanceCovered);
+                                    intent.putExtra("longitudePickUp", pickUp.getLongitude());
+                                    intent.putExtra("latitudePickUp", pickUp.getLatitude());
+                                    intent.putExtra("longitudeDestination", destination.getLongitude());
+                                    intent.putExtra("latitudeDestination", destination.getLatitude());
                                     startActivity(intent);
-                                    overridePendingTransition(0, 0);
                                 }
                             });
                         }

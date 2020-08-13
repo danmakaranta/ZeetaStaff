@@ -21,7 +21,6 @@ import com.example.zeetasupport.UserClient;
 import com.example.zeetasupport.models.User;
 import com.example.zeetasupport.models.WorkerLocation;
 import com.firebase.geofire.GeoFire;
-import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -29,10 +28,7 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -72,7 +68,6 @@ public class LocationService extends Service {
         new CountDownTimer(1000, 2000) {
             @Override
             public void onTick(long millisUntilFinished) {
-
                 protemp = getProfession();
             }
 
@@ -82,6 +77,7 @@ public class LocationService extends Service {
             }
 
         }.start();
+
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -149,14 +145,6 @@ public class LocationService extends Service {
                             WorkerLocation userLocation = new WorkerLocation(user, geoPoint, null);
                             saveUserLocation(userLocation);
 
-                            if (protemp != null && staffLocality != null) {
-                                updateGeolocation();
-                            } else {
-                                Log.d(TAG, "at this point we believe protem is null.");
-                                getBaseOfOperation();
-                            }
-
-                            Log.d(TAG, "onLocationResult: location of last known not null.");
                         }
                     }
                 },
@@ -164,18 +152,6 @@ public class LocationService extends Service {
         ); // Looper.myLooper tells this to repeat forever until thread is destroyed
     }
 
-    private void locationsRunnable() {
-        if (!locationCallbackPresent) {
-            locationHandler.postDelayed(locationRunnable = new Runnable() {
-                @Override
-                public void run() {
-                    updateGeolocation();
-                    locationHandler.postDelayed(locationRunnable, LOCATION_UPDATE_INTERVAL);
-                }
-            }, LOCATION_UPDATE_INTERVAL);
-            locationCallbackPresent = true;
-        }
-    }
 
     private void saveUserLocation(final WorkerLocation userLocation) {
 
@@ -236,58 +212,6 @@ public class LocationService extends Service {
 
     }
 
-    public void updateGeolocation() {
-
-        /*for (; protemp.length() < 2; ) {
-            protemp = getProfession();
-            if (protemp != null) {
-                ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(staffLocality).child(protemp);
-            }
-            geoFire = new GeoFire(ref);
-            updateGeolocation();
-        }*/
-        if (protemp != null) {
-            ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(staffLocality).child(protemp);
-        }
-        geoFire = new GeoFire(ref);
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
-            @Override
-            public void onComplete(@NonNull Task<android.location.Location> task) {
-                if (task.isSuccessful()) {
-                    Location location = task.getResult();
-                    Log.d(TAG, "about to set location and UID to database");
-                    ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(staffLocality).child(protemp);
-                    geoFire = new GeoFire(ref);
-
-                    geoFire.setLocation(Objects.requireNonNull(FirebaseAuth.getInstance().getUid()), new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
-
-                        @Override
-                        public void onComplete(String key, DatabaseError error) {
-                            if (error != null) {
-                                Log.d(TAG, "there was an error saving location");
-                            } else {
-                                Log.d(TAG, "Location saved successfully");
-                            }
-                        }
-                    });
-
-                }
-            }
-
-        });
-
-    }
 
     public String getProfession() {
 

@@ -5,7 +5,7 @@
     android:layout_height="match_parent">
 
     <LinearLayout
-        android:layout_width="300dp"
+        android:layout_width="350dp"
         android:layout_height="160dp"
         android:background="@drawable/green_boarder"
         android:orientation="vertical"
@@ -31,6 +31,7 @@
                 android:id="@+id/cardOptionTxt"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginLeft="3dp"
                 android:text="Card Payment:"
                 android:textSize="17sp"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -39,8 +40,8 @@
 
             <ImageButton
                 android:id="@+id/creditCIcon"
-                android:layout_width="46dp"
-                android:layout_height="43dp"
+                android:layout_width="56dp"
+                android:layout_height="53dp"
                 android:src="@drawable/creditcard24"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -60,6 +61,7 @@
                 android:id="@+id/walletOptionTxt"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginLeft="3dp"
                 android:text="Zeeta Walet:"
                 android:textSize="17sp"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -80,8 +82,8 @@
 
             <ImageButton
                 android:id="@+id/walletIcon"
-                android:layout_width="45dp"
-                android:layout_height="39dp"
+                android:layout_width="55dp"
+                android:layout_height="49dp"
                 android:src="@drawable/wallet24"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"

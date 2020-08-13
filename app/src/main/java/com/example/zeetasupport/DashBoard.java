@@ -40,26 +40,28 @@ public class DashBoard extends AppCompatActivity {
     CollectionReference myTransactions = FirebaseFirestore.getInstance()
             .collection("Users")
             .document(FirebaseAuth.getInstance().getUid()).collection("Transactions");
-    private double walletBalance;
+    private double waletBalance;
     private int connects;
     private TextView dashBoardWallet;
     private TextView dashBoardConnect;
     private TextView dashBoardRating;
     private ArrayList<TransactionData> transactionsList = new ArrayList<TransactionData>();
+    private String protemp, serviceProviderRating;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dash_board);
-
-        walletBalance = getIntent().getDoubleExtra("walletBalance", 0.0);
+        protemp = getIntent().getStringExtra("protemp");
+        serviceProviderRating = getIntent().getStringExtra("rating");
+        waletBalance = getIntent().getDoubleExtra("walletBalance", 0.0);
         connects = getIntent().getIntExtra("connects", 0);
         String myRating = getIntent().getStringExtra("rating");
         dashBoardConnect = findViewById(R.id.dashBoardConnect);
         dashBoardWallet = findViewById(R.id.dashboardWallet);
         dashBoardRating = findViewById(R.id.ratingDashBoard);
-        dashBoardWallet.setText("Wallet :N" + walletBalance);
+        dashBoardWallet.setText("Wallet :N" + waletBalance);
         dashBoardConnect.setText("Connects :" + connects);
         dashBoardRating.setText("Rating :" + myRating);
 
@@ -105,7 +107,17 @@ public class DashBoard extends AppCompatActivity {
                     case R.id.dashboard_button:
                         return true;
                     case R.id.jobs_button:
-                        startActivity(new Intent(getApplicationContext(), Jobs.class));
+                        if (protemp.equalsIgnoreCase("fashion designer")) {
+                            Intent dashIntent = new Intent(getApplicationContext(), Jobs.class).putExtra("walletBalance", waletBalance);
+                            dashIntent.putExtra("connects", connects);
+                            dashIntent.putExtra("rating", serviceProviderRating);
+                            startActivity(dashIntent);
+                        } else {
+                            Intent dashIntent = new Intent(getApplicationContext(), Jobs.class).putExtra("walletBalance", waletBalance);
+                            dashIntent.putExtra("connects", connects);
+                            dashIntent.putExtra("rating", serviceProviderRating);
+                            startActivity(dashIntent);
+                        }
                         return true;
                     case R.id.home_button:
                         startActivity(new Intent(getApplicationContext(), MapActivity.class));

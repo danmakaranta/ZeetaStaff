@@ -5,6 +5,8 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.Uri;
@@ -15,6 +17,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -44,6 +47,8 @@ import com.google.firebase.firestore.ServerTimestamp;
 import com.google.maps.GeoApiContext;
 
 import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
@@ -74,6 +79,13 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
     private boolean mLocationPermissionGranted = false;
     private GeoApiContext mGeoApiContext;
     private ProgressBar mProgressBar;
+    private String protemp, serviceProviderRating;
+    private double walletBalance;
+    private int connects;
+    private long distanceCovered;
+    private TextView distanceCoveredTxt;
+    private TextView destinationTxt;
+    private TextView pickUpTxt;
 
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -83,10 +95,34 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         setContentView(R.layout.activity_job__information);
         mProgressBar = findViewById(R.id.progressBar2);
         mProgressBar.setVisibility(View.INVISIBLE);
+        distanceCoveredTxt = findViewById(R.id.distance_covered);
+        destinationTxt = findViewById(R.id.destination_rider_detail);
+        pickUpTxt = findViewById(R.id.pick_up_rider_detail);
+
+        Button getDirectionBtn = findViewById(R.id.direction_btn);
+        Button minusBtn = findViewById(R.id.minus_hour);
+        Button plusBtn = findViewById(R.id.add_hour);
+        Button callBtn = findViewById(R.id.call_btn);
+        Button startJobBtn = findViewById(R.id.start_job);
+        LinearLayout clsJobLayout = findViewById(R.id.close_job_layout);
 
         jobData = (JobsInfo) getIntent().getExtras().getParcelable("JobData");
         assert jobData != null;
         started = jobData.isStarted();
+        protemp = getIntent().getStringExtra("protemp");
+        serviceProviderRating = getIntent().getStringExtra("serviceProviderRating");
+        connects = getIntent().getIntExtra("connects", 0);
+        walletBalance = getIntent().getDoubleExtra("walletBalance", 0.0);
+        distanceCovered = getIntent().getLongExtra("distanceCovered", 0);
+
+        double latitudePickUp = getIntent().getDoubleExtra("latitudePickUp", 0.0);
+        double longitudePickUp = getIntent().getDoubleExtra("longitudePickUp", 0.0);
+        String pickUpAddress = getCompleteAddressString(latitudePickUp, longitudePickUp);
+
+        double latitudeDestinaiton = getIntent().getDoubleExtra("latitudeDestination", 0.0);
+        double longitudeDestination = getIntent().getDoubleExtra("longitudeDestination", 0.0);
+        String destinationAddress = getCompleteAddressString(latitudeDestinaiton, longitudeDestination);
+
 
         jobsOnCloud = FirebaseFirestore.getInstance()
                 .collection("Users")
@@ -109,6 +145,26 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
                     .build();
         }
 
+        LinearLayout hoursWorkedLL = findViewById(R.id.hours_worked_linear_layout);
+        LinearLayout distanceCoveredLL = findViewById(R.id.ride_distance_covered_layout);
+        LinearLayout ride_pickup_distance = findViewById(R.id.ride_job_detail_layout);
+
+        if (protemp.equalsIgnoreCase("Taxi") || protemp.equalsIgnoreCase("Tricycle(keke)")) {
+            hoursWorkedLL.setVisibility(View.GONE);
+            distanceCoveredLL.setVisibility(View.VISIBLE);
+            ride_pickup_distance.setVisibility(View.VISIBLE);
+            distanceCoveredTxt.setText(distanceCovered + "Km");
+            pickUpTxt.setText(pickUpAddress);
+            destinationTxt.setText(destinationAddress);
+            startJobBtn.setVisibility(View.GONE);
+            clsJobLayout.setVisibility(View.GONE);
+
+        } else {
+            ride_pickup_distance.setVisibility(View.GONE);
+            hoursWorkedLL.setVisibility(View.VISIBLE);
+            distanceCoveredLL.setVisibility(View.GONE);
+        }
+
         //initialize and assign variables for the bottom navigation
         BottomNavigationView bottomNavigationView = findViewById(R.id.nav_view);
         //set home icon selected
@@ -119,7 +175,11 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
                 switch (menuItem.getItemId()) {
                     case R.id.jobs_button:
-                        startActivity(new Intent(getApplicationContext(), Jobs.class));
+                        Intent jobIntent = new Intent(Job_Information.this, Jobs.class);
+                        jobIntent.putExtra("protemp", protemp);
+                        jobIntent.putExtra("walletBalance", walletBalance);
+                        jobIntent.putExtra("connects", connects);
+                        startActivity(jobIntent);
                         overridePendingTransition(0, 0);
                         return true;
                     case R.id.home_button:
@@ -127,8 +187,21 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
                         overridePendingTransition(0, 0);
                         return true;
                     case R.id.dashboard_button:
-                        startActivity(new Intent(getApplicationContext(), DashBoard.class));
-                        overridePendingTransition(0, 0);
+                        if (protemp.equalsIgnoreCase("fashion designer")) {
+                            Intent dashIntent = new Intent(getApplicationContext(), FashionDesignerDashboard.class).putExtra("walletBalance", walletBalance);
+                            dashIntent.putExtra("protemp", protemp);
+                            dashIntent.putExtra("connects", connects);
+                            dashIntent.putExtra("rating", serviceProviderRating);
+                            dashIntent.putExtra("walletBalance", walletBalance);
+                            startActivity(dashIntent);
+                        } else {
+                            Intent dashIntent = new Intent(getApplicationContext(), DashBoard.class).putExtra("walletBalance", walletBalance);
+                            dashIntent.putExtra("protemp", protemp);
+                            dashIntent.putExtra("connects", connects);
+                            dashIntent.putExtra("walletBalance", walletBalance);
+                            dashIntent.putExtra("rating", serviceProviderRating);
+                            startActivity(dashIntent);
+                        }
                         return true;
                 }
                 return false;
@@ -181,11 +254,6 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
         TextView amountPaid = findViewById(R.id.amount_paid_value);
         amountPaid.setText(" N" + jobData.getAmountPaid());
 
-        Button getDirectionBtn = findViewById(R.id.direction_btn);
-        Button minusBtn = findViewById(R.id.minus_hour);
-        Button plusBtn = findViewById(R.id.add_hour);
-        Button callBtn = findViewById(R.id.call_btn);
-        Button startJobBtn = findViewById(R.id.start_job);
 
         startJobBtn.setText("Start Job");
         TextView reportTxt = findViewById(R.id.report_txt);
@@ -437,7 +505,11 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
     @Override
     public void onBackPressed() {
         super.onBackPressed();
-        startActivity(new Intent(Job_Information.this, Jobs.class));
+        Intent jobIntent = new Intent(Job_Information.this, Jobs.class);
+        jobIntent.putExtra("protemp", protemp);
+        jobIntent.putExtra("walletBalance", walletBalance);
+        jobIntent.putExtra("connects", connects);
+        startActivity(jobIntent);
         overridePendingTransition(0, 0);
     }
 
@@ -504,6 +576,30 @@ public class Job_Information extends AppCompatActivity implements OnMapReadyCall
             Log.d("getDeviceLocaitonExcp", "getDeviceLocation: SecurityException:" + e.getMessage());
         }
 
+    }
+
+    private String getCompleteAddressString(double LATITUDE, double LONGITUDE) {
+        String strAdd = "";
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        try {
+            List<Address> addresses = geocoder.getFromLocation(LATITUDE, LONGITUDE, 1);
+            if (addresses != null) {
+                Address returnedAddress = addresses.get(0);
+                StringBuilder strReturnedAddress = new StringBuilder("");
+                for (int i = 0; i <= returnedAddress.getMaxAddressLineIndex(); i++) {
+                    strReturnedAddress.append(returnedAddress.getAddressLine(i)).append("\n");
+                }
+                strAdd = strReturnedAddress.toString();
+
+                Log.w("My Current location", strReturnedAddress.toString());
+            } else {
+                Log.w("My Current loction", "No Address returned!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.w("My Current loction", "Cannt get Address!");
+        }
+        return strAdd;
     }
 
 

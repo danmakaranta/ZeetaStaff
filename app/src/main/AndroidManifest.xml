@@ -23,7 +23,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".FashionDesignerDashboard"></activity>
+        <activity android:name=".Ride_Detail"></activity>
+        <activity android:name=".VerifyPhoneNumber" />
+        <activity android:name=".FashionDesignerDashboard" />
         <activity android:name=".CreditCardLayout" />
         <activity android:name=".RidePage" />
         <activity
@@ -70,7 +72,9 @@
         </activity>
         <activity android:name=".MapActivity" />
 
-        <service android:name=".services.LocationService" />
+        <service
+            android:name=".services.LocationService"
+            android:stopWithTask="true" />
     </application>
 
 </manifest>

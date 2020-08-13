@@ -81,6 +81,18 @@
         app:layout_constraintTop_toBottomOf="@+id/rideMap" />
 
     <Button
+        android:id="@+id/use_google_maps"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:background="@drawable/custom_button3"
+        android:text="Use Google maps"
+        android:visibility="invisible"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/notify_rider" />
+
+    <Button
         android:id="@+id/call_rider"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -97,7 +109,7 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="13dp"
         android:text="00:00"
         android:textColor="@color/Black"
         android:textSize="30sp"
