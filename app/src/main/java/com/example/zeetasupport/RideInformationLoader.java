@@ -72,7 +72,7 @@ public class RideInformationLoader extends AsyncTaskLoader<GeneralJobData> {
                         paymentType = doc.getString("paymentMethod");
                         ended = doc.getBoolean("ended");
                         timeStamp = doc.getTimestamp("timeStamp");
-                        customerName = doc.getString("username");
+                        customerName = doc.getString("name");
                         String serviceRendered = doc.getString("serviceRendered");
 
                         try {// nothing more but to slow down execution a bit to get results before proceeding

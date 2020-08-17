@@ -280,6 +280,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     if (change.equalsIgnoreCase("awaiting")) {
                         incomingRequest = true;
                         ringtone.play();
+                        incomingRequestDialog = new AlertDialog.Builder(MapActivity.this);
                         incomingRequestDialog.setMessage("You have an incoming request. Do you want to accept it?")
                                 .setCancelable(true)
                                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
@@ -289,21 +290,29 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                         acceptRequest();
                                         ringtone.stop();
                                         incomingRequest = false;
+                                        alertForRequest.dismiss();
                                     }
                                 })
                                 .setNegativeButton("No", new DialogInterface.OnClickListener() {
                                     public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
                                         incomingRequest = false;
+                                        alertForRequest.dismiss();
                                         declineRequest();
                                         ringtone.stop();
                                         dialog.dismiss();
+
                                     }
                                 });
 
                         alertForRequest = incomingRequestDialog.create();
                         alertForRequest.setTitle("Incoming request");
                         alertForRequest.setIcon(R.drawable.zeetaicon);
+
+                        if (alertForRequest.isShowing()) {
+                            alertForRequest.dismiss();
+                        }
                         alertForRequest.show();
+
                     }
 
                 } else {
@@ -527,6 +536,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         ringtone.setStreamType(AudioManager.STREAM_RING);
 
         incomingRequestDialog = new AlertDialog.Builder(MapActivity.this);
+        alertForRequest = incomingRequestDialog.create();
+
 
         markerPinned = false;
         if (mGeoApiContext == null) {
@@ -998,6 +1009,11 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     @Override
     protected void onResume() {
         super.onResume();
+        incomingRequestDialog = new AlertDialog.Builder(MapActivity.this);
+        alertForRequest = incomingRequestDialog.create();
+        alertForRequest.setTitle("Incoming request");
+        alertForRequest.setIcon(R.drawable.zeetaicon);
+
 
         if (isLocationServiceRunning()) {
             tempButton.setText(R.string.online_status);
@@ -1005,14 +1021,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             tempButton.setTextColor(colorStatus);
             connect.setVisibility(View.GONE);
             online_status = true;
+
         }
         if (incomingRequest) {
-            if (alertForRequest.isShowing()) {
-
-            } else {
+            if (!alertForRequest.isShowing()) {
                 alertForRequest.show();
-            }
-            //incomingRequestDialog.show();
+            }            //incomingRequestDialog.show();
         }
 
 
@@ -1170,7 +1184,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     driverphoneNumber = (String) doc.get("phoneNumber");
                     driverName = (String) doc.get("name");
                     boolean staffEngaged = (boolean) doc.get("engaged");
-                    boolean backOnline = (boolean) doc.get("continueOnline");
+                    boolean backOnline = (boolean) doc.get("ContinueOnline");
                     staffID = doc.getString("user_Id");
                     connects = safeLongToInt(connectLong);
                     suspended = doc.getBoolean("suspended");
@@ -1350,23 +1364,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         intent.putExtra("serviceProviderPhone", serviceProviderPhone);
         intent.putExtra("serviceProviderName", serviceProviderName);
         startActivity(intent);
-        finish();
+        //finish();
     }
 
-    private void backFromRide() {
-        if (isLocationServiceRunning() && connects >= 1) {
-            tempButton.performClick();
-        }
-        if (incomingRequest) {
-            if (alertForRequest.isShowing()) {
-
-            } else {
-                alertForRequest.show();
-            }
-            //incomingRequestDialog.show();
-        }
-
-    }
 
     private void updateMarkersRunnable() {
         Log.d(TAG, "startUserLocationsRunnable: starting runnable for retrieving updated locations.");
@@ -1375,9 +1375,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                 @Override
                 public void run() {
                     updateMarker();
-                    locationHandler.postDelayed(locationRunnable, 3000);
+                    locationHandler.postDelayed(locationRunnable, 10000);
                 }
-            }, 3000);
+            }, 10000);
             callbackPresent = true;
         }
 
@@ -1407,7 +1407,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
     private void backFromARide() {
-        Log.d(TAG, "BackOnlinecalled");
+
         DocumentReference backFromARideStatus = null;
 
         backFromARideStatus = FirebaseFirestore.getInstance()
@@ -1420,15 +1420,15 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                 DocumentSnapshot doc = task.getResult();
                 if (doc.exists()) {
-                    boolean backfRide = doc.getBoolean("continueOnline");
+                    boolean backfRide = doc.getBoolean("ContinueOnline");
                     Log.d(TAG, "BackOnline called: " + backfRide);
                     try {// nothing more but to slow down execution a bit to get results before proceeding
                         Thread.sleep(1000);
                     } catch (InterruptedException excp) {
                         excp.printStackTrace();
                     }
-                    if (backfRide) {
-                        finalBackFromARideStatus.update("continueOnline", false).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    if (backfRide && !isLocationServiceRunning()) {
+                        finalBackFromARideStatus.update("ContinueOnline", false).addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
                                 if (task.isSuccessful()) {
@@ -1706,8 +1706,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                 //protemp = getProfession();
                                 staffID = FirebaseAuth.getInstance().getUid();
                                 numConnect = getConnect();
-                                backFromARide();
-                                // backFromRide();
+
                                 new CountDownTimer(3000, 1000) {
                                     @Override
                                     public void onTick(long millisUntilFinished) {
@@ -1721,6 +1720,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                     public void onFinish() {
                                         //move camera to current location on map
                                         moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
+                                        backFromARide();
                                     }
                                 }.start();
 

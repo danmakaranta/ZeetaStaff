@@ -1,4 +1,5 @@
 package com.example.zeetasupport.data;
+
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -187,9 +188,8 @@ public class GeneralJobData implements Parcelable {
         return serviceRendered;
     }
 
-    @Override
-    public int describeContents() {
-        return 0;
+    public void setServiceRendered(String serviceRendered) {
+        this.serviceRendered = serviceRendered;
     }
 
     public String getPhoneNumber() {
@@ -204,8 +204,8 @@ public class GeneralJobData implements Parcelable {
         return Name;
     }
 
-    public void setServiceRendered(String serviceRendered) {
-        this.serviceRendered = serviceRendered;
+    public void setName(String name) {
+        Name = name;
     }
 
     public Long getDistanceCovered() {
@@ -224,8 +224,9 @@ public class GeneralJobData implements Parcelable {
         this.amountPaid = amountPaid;
     }
 
-    public void setName(String name) {
-        Name = name;
+    @Override
+    public int describeContents() {
+        return 0;
     }
 
     public String getPaymentMethod() {

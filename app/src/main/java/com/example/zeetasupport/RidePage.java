@@ -99,6 +99,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     private GeneralJobData journeyInfo;
     private Button notify_rider;
     private TextView wait_timer;
+    private TextView distanceCoveredTxt;
     private Button startRideBtn;
     AlertDialog.Builder endRideDialog;
     private Button callRider;
@@ -111,6 +112,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     private DocumentReference clientRideRequest;
     TransactionData transactionData;
     TransactionData transactionDataForCustomers;
+    private long waitingFee = 0;
     private Button useGoogleMaps;
     private String serviceProviderName;
     private String serviceProviderPhone;
@@ -122,6 +124,8 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     private GeoApiContext mDirectionApi = new GeoApiContext.Builder()
             .apiKey("AIzaSyB9nZYenhhs6M8MEXs4xqBYDmaiPpMP4mQ")
             .build();
+    private boolean startedJourney = false;
+    private List<MarkerOptions> driverMarker;
 
     public static boolean callPermissions(Context context, String... permissions) {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
@@ -140,6 +144,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         setContentView(R.layout.activity_ride_page);
         FusedLocationProviderClient mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
         loaderManager = getLoaderManager();
+        driverMarker = new ArrayList<MarkerOptions>();
 
         endingRideProgressDialog = new ProgressDialog(this);
         endingRideProgressDialog.setMessage("Please wait...");
@@ -163,6 +168,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         cancelRideBtn.setEnabled(false);//until arrived at pickup location
         wait_timer = findViewById(R.id.wait_timer);
         wait_timer.setVisibility(View.INVISIBLE);
+
 
         serviceProviderName = getIntent().getStringExtra("serviceProviderName");
         serviceProviderPhone = getIntent().getStringExtra("serviceProviderPhone");
@@ -308,14 +314,14 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                     public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
                         //do whatever you want down here!!!!
                         serviceProviderJobDataOncloud.set(new GeneralJobData(journeyInfo.getServiceLocation(), journeyInfo.getDestination(), null, journeyInfo.getServiceID(),
-                                journeyInfo.getPhoneNumber(), journeyInfo.getName(), distanceCovered, journeyInfo.getAmountPaid(), "Accepted",
-                                true, true, journeyInfo.getServiceRendered(), journeyInfo.getTimeStamp(), "Completed", (long) 0, true, false)).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                journeyInfo.getPhoneNumber(), journeyInfo.getName(), distanceCovered / 1000, journeyInfo.getAmountPaid() + waitingFee, "Accepted",
+                                true, true, journeyInfo.getServiceRendered(), journeyInfo.getTimeStamp(), "Completed", (long) 0, true, false, "Cash")).addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
 
                                 customerJobDataOncloud.set(new GeneralJobData(journeyInfo.getServiceLocation(), journeyInfo.getDestination(), null, FirebaseAuth.getInstance().getUid(),
-                                        serviceProviderPhone, serviceProviderName, distanceCovered, journeyInfo.getAmountPaid(), "Accepted",
-                                        true, true, journeyInfo.getServiceRendered(), journeyInfo.getTimeStamp(), "Completed", (long) 0, true, false)).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                        serviceProviderPhone, serviceProviderName, distanceCovered / 1000, journeyInfo.getAmountPaid() + waitingFee, "Accepted",
+                                        true, true, journeyInfo.getServiceRendered(), journeyInfo.getTimeStamp(), "Completed", (long) 0, true, false, "Cash")).addOnCompleteListener(new OnCompleteListener<Void>() {
                                     @Override
                                     public void onComplete(@NonNull Task<Void> task) {
                                         updateStatus.update("engaged", false).addOnCompleteListener(new OnCompleteListener<Void>() {
@@ -337,7 +343,8 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                 });
 
         AlertDialog alertForRequest = endRideDialog.create();
-        alertForRequest.setTitle("Collect N" + journeyInfo.getAmountPaid() + " from your rider");
+        long amountToDisplay = journeyInfo.getAmountPaid() + waitingFee;
+        alertForRequest.setTitle("Collect N" + amountToDisplay + " from your rider");
         alertForRequest.setIcon(R.drawable.zeetaicon);
         alertForRequest.show();
 
@@ -410,8 +417,8 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                                                         public void onComplete(@NonNull Task<Void> task) {
                                                             if (task.isSuccessful()) {
                                                                 serviceProviderJobDataOncloud.set(new GeneralJobData(journeyInfo.getServiceLocation(), journeyInfo.getDestination(), null, journeyInfo.getServiceID(),
-                                                                        journeyInfo.getPhoneNumber(), journeyInfo.getName(), distanceCovered, journeyInfo.getAmountPaid(), "Accepted",
-                                                                        true, true, journeyInfo.getServiceRendered(), journeyInfo.getTimeStamp(), "Completed", (long) 0, true, false)).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                                        journeyInfo.getPhoneNumber(), journeyInfo.getName(), distanceCovered / 1000, journeyInfo.getAmountPaid() + waitingFee, "Accepted",
+                                                                        true, true, journeyInfo.getServiceRendered(), journeyInfo.getTimeStamp(), "Completed", (long) 0, true, false, "Wallet")).addOnCompleteListener(new OnCompleteListener<Void>() {
                                                                     @Override
                                                                     public void onComplete(@NonNull Task<Void> task) {
                                                                         if (task.isSuccessful()) {
@@ -422,8 +429,8 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                                                                                         @Override
                                                                                         public void onComplete(@NonNull Task<Void> task) {
                                                                                             customerJobDataOncloud.set(new GeneralJobData(journeyInfo.getServiceLocation(), journeyInfo.getDestination(), null, FirebaseAuth.getInstance().getUid(),
-                                                                                                    serviceProviderPhone, serviceProviderName, distanceCovered, journeyInfo.getAmountPaid(), "Accepted",
-                                                                                                    true, true, journeyInfo.getServiceRendered(), journeyInfo.getTimeStamp(), "Completed", (long) 0, true, false)).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                                                                    serviceProviderPhone, serviceProviderName, distanceCovered / 1000, journeyInfo.getAmountPaid() + waitingFee, "Accepted",
+                                                                                                    true, true, journeyInfo.getServiceRendered(), journeyInfo.getTimeStamp(), "Completed", (long) 0, true, false, "Wallet")).addOnCompleteListener(new OnCompleteListener<Void>() {
                                                                                                 @Override
                                                                                                 public void onComplete(@NonNull Task<Void> task) {
                                                                                                     if (task.isSuccessful()) {
@@ -476,13 +483,17 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
     }
 
     private void notifyRiderOfArrival() {
+        //removeTripMarkers();
+        mMap.clear();
+        new getDeviceLocationAsync().execute();
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             rideInformation = FirebaseFirestore.getInstance()
                     .collection("Users")
                     .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
 
         }
-        rideInformation.update("Arrived", true).addOnCompleteListener(new OnCompleteListener<Void>() {
+        rideInformation.update("arrived", true).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 Toast.makeText(RidePage.this, "Your rider has been notified", Toast.LENGTH_SHORT).show();
@@ -508,6 +519,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             public void onFinish() {
                 timerRunning = false;
                 timeInMillis = 300000;
+                waitingFee = 100;
                 wait_timer.setText("Waiting fee added!");
                 Toast.makeText(RidePage.this, "A waiting fee has been added!", Toast.LENGTH_LONG).show();
             }
@@ -554,10 +566,9 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()) {
                     stopTimer();
-                    serviceProviderJobDataOncloud.set(new GeneralJobData(journeyInfo.getServiceLocation(), journeyInfo.getDestination(), null, journeyInfo.getServiceID(),
-                            journeyInfo.getPhoneNumber(), "needs to be fixed", journeyInfo.getDistanceCovered(), (long) 0, "Accepted",
-                            false, false, "Transport", journeyInfo.getTimeStamp(), "Completed", (long) 0,
-                            true, true)).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    serviceProviderJobDataOncloud.set(new GeneralJobData(journeyInfo.getServiceLocation(), journeyInfo.getDestination(), null, FirebaseAuth.getInstance().getUid(),
+                            serviceProviderPhone, serviceProviderName, distanceCovered, journeyInfo.getAmountPaid() + waitingFee, "Accepted",
+                            false, false, journeyInfo.getServiceRendered(), journeyInfo.getTimeStamp(), "Canceled", (long) 0, false, true, journeyInfo.getPaymentMethod())).addOnCompleteListener(new OnCompleteListener<Void>() {
                         @Override
                         public void onComplete(@NonNull Task<Void> task) {
                             if (task.isSuccessful()) {
@@ -612,17 +623,12 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()) {
+                    startedJourney = true;
                     stopTimer();
-                    DEFAULT_ZOOM = 11f;
-                    calculateDirections(journeyInfo.getDestination());
+                    new getDeviceLocationAsync().execute();
+
                     Toast.makeText(RidePage.this, "Journey Started!", Toast.LENGTH_SHORT).show();
-                    cancelRideBtn.setVisibility(View.INVISIBLE);
-                    startRideBtn.setVisibility(View.INVISIBLE);
-                    useGoogleMaps.setVisibility(View.VISIBLE);
-                    callRider.setEnabled(false);
-                    notify_rider.setVisibility(View.INVISIBLE);
-                    endRide.setVisibility(View.VISIBLE);
-                    wait_timer.setVisibility(View.INVISIBLE);
+
                 }
             }
         });
@@ -667,11 +673,11 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                 gp.getLatitude(),
                 gp.getLongitude()
         );
+
         Log.d(TAG, "calculateDirections: finished calculating directions.");
         DirectionsApiRequest directions = new DirectionsApiRequest(mGeoApiContext);
 
-
-        directions.alternatives(false);
+        directions.alternatives(true);
         directions.origin(
                 new com.google.maps.model.LatLng(
                         currentLocation.getLatitude(),
@@ -679,17 +685,11 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                 )
         );
 
-
         Log.d(TAG, "calculateDirections: destination: " + destination.toString());
         directions.destination(destination).setCallback(new PendingResult.Callback<DirectionsResult>() {
             @Override
             public void onResult(DirectionsResult result) {
-                Log.d(TAG, "calculateDirections: routes: " + result.routes[0].toString());
-                Log.d(TAG, "calculateDirections: duration: " + result.routes[0].legs[0].duration);
-                Log.d(TAG, "calculateDirections: distance: " + result.routes[0].legs[0].distance);
-                Log.d(TAG, "calculateDirections: geocodedWayPoints: " + result.geocodedWaypoints[0].toString());
 
-                Log.d(TAG, "onResult: successfully retrieved directions.");
                 addPolylinesToMap(result);
             }
 
@@ -772,7 +772,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                 );
 
                 Marker marker;
-                if (journeyInfo.getStarted()) {
+                if (startedJourney) {
                     marker = mMap.addMarker(new MarkerOptions()
                             .position(endLocation)
                             .icon(BitmapDescriptorFactory.fromResource(R.drawable.home))
@@ -810,7 +810,8 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         journeyInfo = data;
         pickUpGeoPoint = new GeoPoint(data.getServiceLocation().getLatitude(), data.getServiceLocation().getLongitude());
         destinationGeoPoint = new GeoPoint(data.getDestination().getLatitude(), data.getDestination().getLongitude());
-        distanceCovered = calculateDistance(pickUpGeoPoint, destinationGeoPoint);
+        distanceCovered = (calculateDistance(pickUpGeoPoint, destinationGeoPoint)) / 1000;
+        startedJourney = journeyInfo.getStarted();
 
         new getDeviceLocationAsync().execute();
     }
@@ -944,10 +945,59 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
     }
 
+    /*private void updateMarkersRunnable() {
+        Log.d(TAG, "startUserLocationsRunnable: starting runnable for retrieving updated locations.");
+        if (!callbackPresent) {
+            locationHandler.postDelayed(locationRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    updateMarker();
+                    locationHandler.postDelayed(locationRunnable, 10000);
+                }
+            }, 10000);
+            callbackPresent = true;
+        }
+
+    }
+
+    private void updateMarker() {
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
+            @Override
+            public void onComplete(@NonNull Task<android.location.Location> task) {
+                if (task.isSuccessful()) {
+                    currentLocation = task.getResult();
+                    moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "Me!");
+                }
+            }
+        });
+    }
+*/
+    private void moveCamera(LatLng latlng, float zoom, String title) {
+
+        //create a marker to drop pin at the location
+        MarkerOptions options = new MarkerOptions().position(latlng);
+        options.title("You");
+        mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.car64));
+
+        //driverMarker.add(options);
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, zoom));
+
+    }
+
     public class getDeviceLocationAsync extends AsyncTask<String, String, String> {
 
-        public double lati = 0.0;
-        public double longi = 0.0;
 
         public LocationManager mLocationManager;
 
@@ -978,38 +1028,34 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             criteria = new Criteria();
             bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
 
-            Log.d(TAG, "RidePage: getting the device current location 1");
-
-
             try {
                 if (mLocationPermissionGranted) {// check first to see if the permission is granted
                     mFusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
                     mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
                         @Override
                         public void onComplete(@NonNull Task<android.location.Location> task) {
-                            Log.d(TAG, "RidePage: getting the device current location 2");
+
 
                             if (task.isSuccessful()) {
                                 Location location = task.getResult();
                                 currentLocation = location;
                                 //move camera to current location on map
-                                if (journeyInfo.getServiceLocation() != null && !journeyInfo.getStarted()) {
+                                if (journeyInfo.getServiceLocation() != null && !startedJourney) {
                                     showPointerOnMap(currentLocation.getLatitude(), currentLocation.getLongitude());
-                                    Log.d(TAG, "checking pick up: " + journeyInfo.getServiceLocation());
                                     calculateDirections(journeyInfo.getServiceLocation());
 
-                                } else if (journeyInfo.getStarted() && currentLocation != null) {
+                                } else if (startedJourney && currentLocation != null) {
                                     showPointerOnMap(currentLocation.getLatitude(), currentLocation.getLongitude());
+                                    pickupRiderBtn.setEnabled(false);
+                                    DEFAULT_ZOOM = 12f;
+                                    calculateDirections(journeyInfo.getDestination());
                                     cancelRideBtn.setVisibility(View.INVISIBLE);
                                     startRideBtn.setVisibility(View.INVISIBLE);
                                     useGoogleMaps.setVisibility(View.VISIBLE);
-                                    pickupRiderBtn.setEnabled(false);
                                     callRider.setEnabled(false);
                                     notify_rider.setVisibility(View.INVISIBLE);
                                     endRide.setVisibility(View.VISIBLE);
                                     wait_timer.setVisibility(View.INVISIBLE);
-                                    DEFAULT_ZOOM = 11f;
-                                    calculateDirections(journeyInfo.getDestination());
                                 }
                             }
                         }
@@ -1022,5 +1068,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             return null;
         }
     }
+
 
 }
