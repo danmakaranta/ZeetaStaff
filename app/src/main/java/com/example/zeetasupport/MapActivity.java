@@ -90,6 +90,7 @@ import com.google.maps.model.DirectionsRoute;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -127,6 +128,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     Ringtone ringtone;
     //listen for a request
     DocumentReference clientRequest;
+    DocumentReference pushOffline;
     DocumentReference acceptanceStatus;
     boolean requestAccepted = false;
     DocumentReference jobData = null;
@@ -200,6 +202,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private String suspensionMessage;
     private String serviceProviderPhone;
     private String serviceProviderName;
+    private MarkerOptions options;
+    private boolean isMarkerRotating = false;
 
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
@@ -226,11 +230,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         Log.d(TAG, "onMapReady: map is ready here");
         googleMap.getUiSettings().setMyLocationButtonEnabled(true);
         googleMap.getUiSettings().setZoomControlsEnabled(true);
+
+
         mMap = googleMap;
         if (mLocationPermissionGranted) {
             //new getDeviceLocationAsync().execute();
         }
-
 
         mMap.setOnPolylineClickListener(this);
     }
@@ -277,6 +282,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     Log.d(TAG, "Current data: " + documentSnapshot.getData());
                     Log.d(TAG, "A change has been effected on this doc");
                     String change = documentSnapshot.get("accepted").toString();
+                    boolean canceledRequest = documentSnapshot.getBoolean("cancelRide");
+
                     if (change.equalsIgnoreCase("awaiting")) {
                         incomingRequest = true;
                         ringtone.play();
@@ -308,10 +315,17 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         alertForRequest.setTitle("Incoming request");
                         alertForRequest.setIcon(R.drawable.zeetaicon);
 
-                        if (alertForRequest.isShowing()) {
+                        /*if (alertForRequest.isShowing()) {
                             alertForRequest.dismiss();
-                        }
+                        }*/
                         alertForRequest.show();
+
+                        if (canceledRequest) {
+                            incomingRequest = false;
+                            alertForRequest.dismiss();
+                            clientRequest.delete();
+                            ringtone.stop();
+                        }
 
                     }
 
@@ -366,7 +380,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         result[0] = true;
                     }
                 });
-
             }
         });
     }
@@ -444,14 +457,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
     }
 
-
     private void declineRequest() {
         acceptanceStatus = FirebaseFirestore.getInstance()
                 .collection("Users")
                 .document(Objects.requireNonNull(getInstance().getUid())).collection("Request").document("ongoing");
         acceptanceStatus.update("accepted", "Declined");
     }
-
 
     private void deleteOnlinePresence() {
         ref = FirebaseDatabase.getInstance("https://zeeta-6b4c0.firebaseio.com").getReference(locality).child(protemp);
@@ -488,6 +499,11 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             loaderManager.initLoader(1, null, MapActivity.this);
         }
 
+        pushOffline = FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(Objects.requireNonNull(getInstance().getUid()));
+
+
         clientRequest = FirebaseFirestore.getInstance()
                 .collection("Users")
                 .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("Request").document("ongoing");
@@ -509,6 +525,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     }
 
                 } else {
+
                     new getDeviceLocationAsync2().execute();
                 }
 
@@ -628,6 +645,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                             } else {
                                 loadingProgressDialog.show();
                                 startLocationService();
+                                listenForPushOffline();
                                 createOnlinePresence();
                             }
 
@@ -659,6 +677,38 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     Toast.makeText(getApplicationContext(), "Please check your internet connection!", Toast.LENGTH_LONG).show();
                 }
             }
+        });
+
+
+    }
+
+    private void listenForPushOffline() {
+        if (pushOffline == null) {
+            pushOffline = FirebaseFirestore.getInstance()
+                    .collection("Users")
+                    .document(Objects.requireNonNull(getInstance().getUid()));
+        }
+        pushOffline.addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
+
+                if (e != null) {
+                    Log.w(TAG, "Listen failed.", e);
+                    return;
+                }
+                boolean pushOfflineBoolean = documentSnapshot.getBoolean("pushOffline");
+                try {// nothing more but to slow down execution a bit to get results before proceeding
+                    Thread.sleep(2000);
+                } catch (InterruptedException excp) {
+                    excp.printStackTrace();
+                }
+
+                if (documentSnapshot.exists() && pushOfflineBoolean && isLocationServiceRunning()) {
+                    Toast.makeText(MapActivity.this, "You have been pushed offline!", Toast.LENGTH_SHORT).show();
+                    tempButton.performClick();
+                }
+            }
+
         });
 
 
@@ -917,12 +967,12 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private void moveCamera(LatLng latlng, float zoom, String title) {
 
         //create a marker to drop pin at the location
-        MarkerOptions options = new MarkerOptions().position(latlng);
+        options = new MarkerOptions().position(latlng);
         options.title("You");
 
         if (protemp.equalsIgnoreCase("Taxi") || protemp.equalsIgnoreCase("Trycycle(Keke)")) {
 
-            mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.car64));
+            mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.newtopdown64));
             //staffMarker.showInfoWindow();
 
         } else {
@@ -937,6 +987,20 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         if (suspended) {
             showSuspensionMessage(suspensionMessage);
         }
+
+        Random r = new Random();
+        float min = (float) (currentLocation.getLatitude() - 15);
+        float max = (float) (currentLocation.getLatitude() + 15);
+        float random = min + r.nextFloat() * (max - min);
+
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                options.rotation(70);
+
+                Log.d(TAG, "rotate marker runnable" + options.getRotation());
+            }
+        }, 2000);
 
     }
 
@@ -1269,6 +1333,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         .title("Route #" + index)
                         .snippet("Duration: " + polylineData.getLeg().duration
                         ));
+
 
                 mTripMarkers.add(marker);
 
@@ -1714,6 +1779,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                         staffID = FirebaseAuth.getInstance().getUid();
                                         numConnect = getConnect();
                                         walletBalanceUpdate();
+                                        listenForPushOffline();
                                     }
 
                                     @Override

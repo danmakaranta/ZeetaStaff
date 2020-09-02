@@ -536,6 +536,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
     }
 
+
     private void stopTimer() {
         if (timerRunning) {
             waitCountDownTimer.cancel();
@@ -704,7 +705,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
-                Log.d(TAG, "run: result routes: " + result.routes.length);
+
                 if (mPolyLinesData.size() > 0) {
                     for (PolylineData polylineData : mPolyLinesData) {
                         polylineData.getPolyline().remove();
@@ -723,8 +724,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                     // This loops through all the LatLng coordinates of ONE polyline.
                     for (com.google.maps.model.LatLng latLng : decodedPath) {
 
-//                        Log.d(TAG, "run: latlng: " + latLng.toString());
-
                         newDecodedPath.add(new LatLng(
                                 latLng.lat,
                                 latLng.lng
@@ -741,7 +740,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                         duration = tempDuration;
                         onPolylineClick(polyline);
                     }
-
 
                 }
             }
@@ -782,7 +780,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                 } else {
                     marker = mMap.addMarker(new MarkerOptions()
                             .position(endLocation)
-                            .icon(BitmapDescriptorFactory.fromResource(R.drawable.passenger))
+                            .icon(BitmapDescriptorFactory.fromResource(R.drawable.home))
                             .title("Zeeta Rider")
                             .snippet("Duration: " + polylineData.getLeg().duration + " away"
                             ));
@@ -832,6 +830,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         mMap.setOnPolylineClickListener(this);
         googleMap.getUiSettings().setMyLocationButtonEnabled(true);
         googleMap.getUiSettings().setZoomControlsEnabled(true);
+        googleMap.setTrafficEnabled(true);
         initMap();
     }
 

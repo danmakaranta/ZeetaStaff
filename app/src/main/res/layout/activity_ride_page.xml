@@ -11,7 +11,7 @@
         android:id="@+id/rideMap"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="500dp"
+        android:layout_height="300dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.666"
         app:layout_constraintStart_toStartOf="parent"
@@ -22,7 +22,7 @@
         android:id="@+id/ride_layout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
+        android:layout_marginBottom="15dp"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -62,29 +62,88 @@
         android:id="@+id/pick_up_rider"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="5dp"
-        android:layout_marginTop="5dp"
+        android:layout_margin="10dp"
+        android:layout_marginTop="10dp"
         android:background="@drawable/custom_button3"
         android:text="@string/pickup_rider"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/rideMap" />
+        app:layout_constraintTop_toBottomOf="@+id/chat" />
+
+    <LinearLayout
+        android:id="@+id/chat"
+        android:layout_width="wrap_content"
+        android:layout_height="100dp"
+        android:layout_margin="5dp"
+        android:background="@drawable/black_boarder"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/rideMap">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:layout_weight="8"
+            android:orientation="vertical"
+
+            >
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <ListView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+
+            </ScrollView>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:layout_margin="2dp"
+            android:layout_weight="2"
+            android:background="@drawable/simple_boder"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/chat_message"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="8"
+                android:enabled="false"
+                android:hint="Send a message to your rider" />
+
+            <ImageButton
+                android:id="@+id/sendMessageToRider"
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:src="@drawable/share2" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
     <Button
         android:id="@+id/notify_rider"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="5dp"
+        android:layout_marginTop="10dp"
         android:background="@drawable/custom_button3"
         android:text="@string/arrived_at_pickup"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/rideMap" />
+        app:layout_constraintTop_toBottomOf="@+id/chat" />
 
     <Button
         android:id="@+id/use_google_maps"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="5dp"
+        android:layout_marginTop="25dp"
         android:background="@drawable/custom_button3"
         android:text="Use Google maps"
         android:visibility="invisible"
@@ -96,12 +155,12 @@
         android:id="@+id/call_rider"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="5dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginRight="10dp"
         android:background="@drawable/custom_button3"
         android:text="@string/call_rider"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/notify_rider"
-        app:layout_constraintTop_toBottomOf="@+id/rideMap" />
+        app:layout_constraintTop_toBottomOf="@+id/chat" />
 
     <TextView
         android:id="@+id/wait_timer"
@@ -109,14 +168,13 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"
-        android:layout_marginTop="13dp"
         android:text="00:00"
         android:textColor="@color/Black"
         android:textSize="30sp"
         app:layout_constraintBottom_toTopOf="@+id/ride_layout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/notify_rider" />
+        app:layout_constraintTop_toBottomOf="@+id/use_google_maps" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

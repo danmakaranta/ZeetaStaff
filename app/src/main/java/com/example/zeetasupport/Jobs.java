@@ -15,8 +15,6 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.example.zeetasupport.adapters.JobAdapter;
-import com.example.zeetasupport.data.CompletedJobs;
-import com.example.zeetasupport.data.GeneralJobData;
 import com.example.zeetasupport.data.JobsInfo;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -41,8 +39,6 @@ import androidx.appcompat.app.AppCompatActivity;
 public class Jobs extends AppCompatActivity {
 
     final ArrayList<JobsInfo> jobsList = new ArrayList<JobsInfo>();
-    final ArrayList<GeneralJobData> generalJobsList = new ArrayList<GeneralJobData>();
-    final ArrayList<CompletedJobs> completedjobsList = new ArrayList<CompletedJobs>();
     CollectionReference jobsOnCloud;
     private String status;
     private String protemp, serviceProviderRating;
@@ -62,11 +58,11 @@ public class Jobs extends AppCompatActivity {
         if (protemp.equalsIgnoreCase("taxi") || protemp.equalsIgnoreCase("Tricycle(keke)")) {
             jobsOnCloud = FirebaseFirestore.getInstance()
                     .collection("Users")
-                    .document(FirebaseAuth.getInstance().getUid()).collection("RideData");
+                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("RideData");
         } else {
             jobsOnCloud = FirebaseFirestore.getInstance()
                     .collection("Users")
-                    .document(FirebaseAuth.getInstance().getUid()).collection("JobData");
+                    .document(Objects.requireNonNull(FirebaseAuth.getInstance().getUid())).collection("JobData");
         }
 
         //initialize and assign variables for the bottom navigation
