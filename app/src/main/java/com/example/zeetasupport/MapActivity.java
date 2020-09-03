@@ -90,7 +90,6 @@ import com.google.maps.model.DirectionsRoute;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -204,6 +203,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private String serviceProviderName;
     private MarkerOptions options;
     private boolean isMarkerRotating = false;
+    private Marker driverMarker;
+    private float rot1 = 180, rot2 = 60, rot3 = 90;
+    private Runnable r;
 
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
@@ -587,11 +589,13 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         if (protemp.equalsIgnoreCase("fashion designer")) {
                             Intent dashIntent = new Intent(getApplicationContext(), FashionDesignerDashboard.class).putExtra("walletBalance", waletBalance);
                             dashIntent.putExtra("connects", connects);
+                            dashIntent.putExtra("protemp", protemp);
                             dashIntent.putExtra("rating", serviceProviderRating);
                             startActivity(dashIntent);
                         } else {
                             Intent dashIntent = new Intent(getApplicationContext(), DashBoard.class).putExtra("walletBalance", waletBalance);
                             dashIntent.putExtra("connects", connects);
+                            dashIntent.putExtra("protemp", protemp);
                             dashIntent.putExtra("rating", serviceProviderRating);
                             startActivity(dashIntent);
                         }
@@ -971,8 +975,14 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         options.title("You");
 
         if (protemp.equalsIgnoreCase("Taxi") || protemp.equalsIgnoreCase("Trycycle(Keke)")) {
+            driverMarker = mMap.addMarker(new MarkerOptions()
+                    .position(latlng)
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.newtopdown64))
+                    .anchor(0.5f, 0.5f)
+                    .rotation(120)
+                    .title("You"));
 
-            mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.newtopdown64));
+            //mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.newtopdown64));
             //staffMarker.showInfoWindow();
 
         } else {
@@ -988,19 +998,23 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             showSuspensionMessage(suspensionMessage);
         }
 
-        Random r = new Random();
-        float min = (float) (currentLocation.getLatitude() - 15);
-        float max = (float) (currentLocation.getLatitude() + 15);
-        float random = min + r.nextFloat() * (max - min);
 
-        handler.postDelayed(new Runnable() {
-            @Override
+        handler = new Handler();
+        r = new Runnable() {
             public void run() {
-                options.rotation(70);
-
-                Log.d(TAG, "rotate marker runnable" + options.getRotation());
+                if (driverMarker.getRotation() == rot1) {
+                    driverMarker.setRotation(rot2);
+                } else if (driverMarker.getRotation() == rot2) {
+                    driverMarker.setRotation(rot3);
+                } else {
+                    driverMarker.setRotation(rot1);
+                }
+                handler.postDelayed(this, 3000);
             }
-        }, 2000);
+        };
+
+        handler.postDelayed(r, 3000);
+
 
     }
 

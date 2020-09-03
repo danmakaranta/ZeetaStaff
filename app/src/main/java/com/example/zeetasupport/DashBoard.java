@@ -110,11 +110,13 @@ public class DashBoard extends AppCompatActivity {
                         if (protemp.equalsIgnoreCase("fashion designer")) {
                             Intent dashIntent = new Intent(getApplicationContext(), Jobs.class).putExtra("walletBalance", waletBalance);
                             dashIntent.putExtra("connects", connects);
+                            dashIntent.putExtra("protemp", protemp);
                             dashIntent.putExtra("rating", serviceProviderRating);
                             startActivity(dashIntent);
                         } else {
                             Intent dashIntent = new Intent(getApplicationContext(), Jobs.class).putExtra("walletBalance", waletBalance);
                             dashIntent.putExtra("connects", connects);
+                            dashIntent.putExtra("protemp", protemp);
                             dashIntent.putExtra("rating", serviceProviderRating);
                             startActivity(dashIntent);
                         }
