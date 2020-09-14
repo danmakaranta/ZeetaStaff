@@ -26,6 +26,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -126,6 +127,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             .build();
     private boolean startedJourney = false;
     private List<MarkerOptions> driverMarker;
+    private LinearLayout chatLayout;
 
     public static boolean callPermissions(Context context, String... permissions) {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
@@ -151,6 +153,8 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
         initialLoadingProgressDialog = new ProgressDialog(this);
         initialLoadingProgressDialog.setMessage("Loading...");
+
+        chatLayout = findViewById(R.id.chatLayout);
 
 
         if (loaderManager.getLoader(1) != null) {
@@ -244,6 +248,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         notify_rider.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                chatLayout.setVisibility(View.GONE);
                 notifyRiderOfArrival();
             }
         });
@@ -625,11 +630,10 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()) {
                     startedJourney = true;
+                    chatLayout.setVisibility(View.GONE);
                     stopTimer();
                     new getDeviceLocationAsync().execute();
-
                     Toast.makeText(RidePage.this, "Journey Started!", Toast.LENGTH_SHORT).show();
-
                 }
             }
         });
@@ -777,6 +781,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                             .title("Destination")
                             .snippet("Duration: " + polylineData.getLeg().duration + " away"
                             ));
+                    chatLayout.setVisibility(View.GONE);
                 } else {
                     marker = mMap.addMarker(new MarkerOptions()
                             .position(endLocation)
@@ -880,7 +885,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                 LatLng latLng = new LatLng(latitude, longitude);
                 mMap = googleMap;
                 googleMap.addMarker(new MarkerOptions()
-                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.car64))
+                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.newtopdown64))
                         .anchor(0.0f, 1.0f)
                         .position(latLng)).setTitle("You");
                 googleMap.getUiSettings().setMyLocationButtonEnabled(true);
@@ -1034,7 +1039,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                         @Override
                         public void onComplete(@NonNull Task<android.location.Location> task) {
 
-
                             if (task.isSuccessful()) {
                                 Location location = task.getResult();
                                 currentLocation = location;
@@ -1058,7 +1062,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
                                 }
                             }
                         }
-
                     });
                 }
             } catch (SecurityException e) {

@@ -11,7 +11,7 @@
         android:id="@+id/rideMap"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="300dp"
+        android:layout_height="360dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.666"
         app:layout_constraintStart_toStartOf="parent"
@@ -67,10 +67,10 @@
         android:background="@drawable/custom_button3"
         android:text="@string/pickup_rider"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/chat" />
+        app:layout_constraintTop_toBottomOf="@+id/chatLayout" />
 
     <LinearLayout
-        android:id="@+id/chat"
+        android:id="@+id/chatLayout"
         android:layout_width="wrap_content"
         android:layout_height="100dp"
         android:layout_margin="5dp"
@@ -137,13 +137,13 @@
         android:text="@string/arrived_at_pickup"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/chat" />
+        app:layout_constraintTop_toBottomOf="@+id/chatLayout" />
 
     <Button
         android:id="@+id/use_google_maps"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="25dp"
+        android:layout_marginTop="5dp"
         android:background="@drawable/custom_button3"
         android:text="Use Google maps"
         android:visibility="invisible"
@@ -160,7 +160,7 @@
         android:background="@drawable/custom_button3"
         android:text="@string/call_rider"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/chat" />
+        app:layout_constraintTop_toBottomOf="@+id/chatLayout" />
 
     <TextView
         android:id="@+id/wait_timer"

@@ -204,6 +204,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private MarkerOptions options;
     private boolean isMarkerRotating = false;
     private Marker driverMarker;
+    private Marker fashionDMarker;
     private float rot1 = 180, rot2 = 60, rot3 = 90;
     private Runnable r;
 
@@ -254,6 +255,87 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
     private TextView walletBalancetxt;
+
+    private void listenForJobRequestFD() {
+        stopListenningForRequest();
+
+        clientRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
+
+                if (e != null) {
+                    Log.w(TAG, "Listen failed.", e);
+                    return;
+                }
+                String acceptedAlready;
+                assert documentSnapshot != null;
+                if (documentSnapshot.exists()) {
+                    acceptedAlready = documentSnapshot.getString("accepted");
+                } else {
+                    acceptedAlready = "";
+                }
+                try {// nothing more but to slow down execution a bit to get results before proceeding
+                    Thread.sleep(2000);
+                } catch (InterruptedException excp) {
+                    excp.printStackTrace();
+                }
+
+                if (documentSnapshot.exists() && online_status && acceptedAlready.equalsIgnoreCase("Awaiting")) {
+                    Log.d(TAG, "Current data: " + documentSnapshot.getData());
+                    Log.d(TAG, "A change has been effected on this doc");
+                    String change = documentSnapshot.get("accepted").toString();
+
+
+                    if (change.equalsIgnoreCase("awaiting")) {
+                        incomingRequest = true;
+                        ringtone.play();
+                        incomingRequestDialog = new AlertDialog.Builder(MapActivity.this);
+                        incomingRequestDialog.setMessage("You have an incoming request. Do you want to accept it?")
+                                .setCancelable(true)
+                                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                                    public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                                        //do whatever you want down here!!!!
+                                        dialog.dismiss();
+                                        acceptRequest();
+                                        ringtone.stop();
+                                        incomingRequest = false;
+                                        alertForRequest.dismiss();
+                                    }
+                                })
+                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                                    public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                                        incomingRequest = false;
+                                        alertForRequest.dismiss();
+                                        declineRequest();
+                                        ringtone.stop();
+                                        dialog.dismiss();
+                                    }
+                                });
+
+                        alertForRequest = incomingRequestDialog.create();
+                        alertForRequest.setTitle("Incoming request");
+                        alertForRequest.setIcon(R.drawable.zeetaicon);
+
+                        /*if (alertForRequest.isShowing()) {
+                            alertForRequest.dismiss();
+                        }*/
+                        alertForRequest.show();
+
+                        /*if (canceledRequest) {
+                            incomingRequest = false;
+                            alertForRequest.dismiss();
+                            clientRequest.delete();
+                            ringtone.stop();
+                        }*/
+
+                    }
+
+                } else {
+                    Log.d(TAG, "Current data: null");
+                }
+            }
+        });
+    }
 
 
     private void listenForJobRequest() {
@@ -309,7 +391,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                         declineRequest();
                                         ringtone.stop();
                                         dialog.dismiss();
-
                                     }
                                 });
 
@@ -441,7 +522,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                                             @Override
                                                             public void onFinish() {
                                                                 initializationProgressDialog.dismiss();
-                                                                startActivity(new Intent(MapActivity.this, Jobs.class));
+                                                                Intent fashionIntent = new Intent(MapActivity.this, Jobs.class);
+                                                                fashionIntent.putExtra("protemp", protemp);
+                                                                fashionIntent.putExtra("connects", connects);
+                                                                startActivity(fashionIntent);
                                                             }
                                                         }.start();
                                                     }
@@ -985,6 +1069,13 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             //mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.newtopdown64));
             //staffMarker.showInfoWindow();
 
+        } else if (protemp.equalsIgnoreCase("Fashion Designer")) {
+            fashionDMarker = mMap.addMarker(new MarkerOptions()
+                    .position(latlng)
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.fashiondesigner))
+                    .title("You"));
+            fashionDMarker.showInfoWindow();
+            //mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.fashiondesigner));
         } else {
             mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.ic_directions_walk_black_24dp));
         }
@@ -1000,18 +1091,21 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
 
         handler = new Handler();
-        r = new Runnable() {
-            public void run() {
-                if (driverMarker.getRotation() == rot1) {
-                    driverMarker.setRotation(rot2);
-                } else if (driverMarker.getRotation() == rot2) {
-                    driverMarker.setRotation(rot3);
-                } else {
-                    driverMarker.setRotation(rot1);
+        if (driverMarker != null) {
+            r = new Runnable() {
+                public void run() {
+                    if (driverMarker.getRotation() == rot1) {
+                        driverMarker.setRotation(rot2);
+                    } else if (driverMarker.getRotation() == rot2) {
+                        driverMarker.setRotation(rot3);
+                    } else {
+                        driverMarker.setRotation(rot1);
+                    }
+                    handler.postDelayed(this, 3000);
                 }
-                handler.postDelayed(this, 3000);
-            }
-        };
+            };
+        }
+
 
         handler.postDelayed(r, 3000);
 
@@ -1160,7 +1254,14 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                 Log.d(TAG, "there was an error saving location");
                             } else {
                                 online_status = true;
-                                listenForJobRequest();
+                                if (protemp.equalsIgnoreCase("Fashion Designer")) {
+                                    listenForJobRequestFD();
+                                } else if (protemp.equalsIgnoreCase("Taxi") || protemp.equalsIgnoreCase("Tricycle(keke)")) {
+                                    listenForJobRequest();
+                                } else {
+                                    listenForJobRequest();
+                                }
+
                                 connect.setVisibility(View.GONE);
                                 loadingProgressDialog.dismiss();
                                 tempButton.setText("Go offline");
@@ -1193,9 +1294,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                 @Override
                 public void run() {
                     updateGeolocation();
-                    locationHandlerForGeoFire.postDelayed(locationRunnableForGeoFire, 3000);
+                    locationHandlerForGeoFire.postDelayed(locationRunnableForGeoFire, 5000);
                 }
-            }, 3000);
+            }, 5000);
 
         } else {
             stopService(serviceIntent);// stop location updates from here
@@ -1288,9 +1389,9 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                             //moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
                             loadingProgressDialog.dismiss();
                             if (staffEngaged) {
-                                redirectingProgDialog.show();
 
                                 if (aiki.equalsIgnoreCase("Taxi") || aiki.equalsIgnoreCase("Trycycle(Keke)")) {
+                                    redirectingProgDialog.show();
                                     startJourneyLoader();
                                 } else {
                                     Toast.makeText(MapActivity.this, "In order for you to get more Job request, You need to complete your current Job!", Toast.LENGTH_SHORT).show();
@@ -1785,24 +1886,25 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                 //protemp = getProfession();
                                 staffID = FirebaseAuth.getInstance().getUid();
                                 numConnect = getConnect();
+                                if (currentLocation != null) {
+                                    new CountDownTimer(3000, 1000) {
+                                        @Override
+                                        public void onTick(long millisUntilFinished) {
+                                            protemp = getProfession();
+                                            staffID = FirebaseAuth.getInstance().getUid();
+                                            numConnect = getConnect();
+                                            walletBalanceUpdate();
+                                            listenForPushOffline();
+                                        }
 
-                                new CountDownTimer(3000, 1000) {
-                                    @Override
-                                    public void onTick(long millisUntilFinished) {
-                                        protemp = getProfession();
-                                        staffID = FirebaseAuth.getInstance().getUid();
-                                        numConnect = getConnect();
-                                        walletBalanceUpdate();
-                                        listenForPushOffline();
-                                    }
-
-                                    @Override
-                                    public void onFinish() {
-                                        //move camera to current location on map
-                                        moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
-                                        backFromARide();
-                                    }
-                                }.start();
+                                        @Override
+                                        public void onFinish() {
+                                            //move camera to current location on map
+                                            moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), DEFAULT_ZOOM, "My location");
+                                            backFromARide();
+                                        }
+                                    }.start();
+                                }
 
                             }
                         }

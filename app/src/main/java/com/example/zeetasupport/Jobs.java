@@ -6,7 +6,6 @@ import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
-import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -114,7 +113,6 @@ public class Jobs extends AppCompatActivity {
         super.onResume();
     }
 
-
     private void populateJobList() {
         jobsOnCloud.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
@@ -123,49 +121,48 @@ public class Jobs extends AppCompatActivity {
                     List<DocumentSnapshot> docList = task.getResult().getDocuments();
 
                     if (docList.size() >= 1) {
-
                         for (QueryDocumentSnapshot document : task.getResult()) {
+                            if (!document.getData().isEmpty()) {
+                                String name = Objects.requireNonNull(document.getData().get("name")).toString();
+                                Timestamp date = (Timestamp) document.getData().get("timeStamp");
+                                Long amount = (Long) document.getData().get("amountPaid");
+                                status = Objects.requireNonNull(document.getData().get("status")).toString();
+                                assert amount != null;
+                                Double amountPaid = amount.doubleValue();
+                                String phoneNumber = Objects.requireNonNull(document.getData().get("phoneNumber")).toString();
+                                Long hoursWorked = (Long) document.getData().get("hoursWorked");
+                                GeoPoint gp = (GeoPoint) document.getData().get("serviceLocation");
+                                String clientID = document.getData().get("serviceID").toString();
+                                String startedStr = Objects.requireNonNull(document.getData().get("started")).toString();
+                                boolean started = Boolean.parseBoolean(startedStr);
+                                long distanceCovered = document.getLong("distanceCovered");
+                                GeoPoint pickUp = document.getGeoPoint("serviceLocation");
+                                GeoPoint destination = document.getGeoPoint("destination");
+                                jobsList.add(new JobsInfo(name, amountPaid, date, phoneNumber, clientID, status, hoursWorked, gp, started));
 
-                            String name = Objects.requireNonNull(document.getData().get("name")).toString();
-                            Timestamp date = (Timestamp) document.getData().get("timeStamp");
-                            Long amount = (Long) document.getData().get("amountPaid");
-                            status = Objects.requireNonNull(document.getData().get("status")).toString();
-                            assert amount != null;
-                            Double amountPaid = amount.doubleValue();
-                            String phoneNumber = Objects.requireNonNull(document.getData().get("phoneNumber")).toString();
-                            Long hoursWorked = (Long) document.getData().get("hoursWorked");
-                            GeoPoint gp = (GeoPoint) document.getData().get("serviceLocation");
-                            String clientID = document.getData().get("serviceID").toString();
-                            String startedStr = Objects.requireNonNull(document.getData().get("started")).toString();
-                            boolean started = Boolean.parseBoolean(startedStr);
-                            long distanceCovered = document.getLong("distanceCovered");
-                            GeoPoint pickUp = document.getGeoPoint("serviceLocation");
-                            GeoPoint destination = document.getGeoPoint("destination");
-                            jobsList.add(new JobsInfo(name, amountPaid, date, phoneNumber, clientID, status, hoursWorked, gp, started));
+                                ListAdapter myAdapter = new JobAdapter(Jobs.this, jobsList, 1);
+                                ListView myListView = (ListView) findViewById(R.id.jobs_completed2);
 
-                            ListAdapter myAdapter = new JobAdapter(Jobs.this, jobsList, 1);
-                            ListView myListView = (ListView) findViewById(R.id.jobs_completed2);
+                                myListView.setAdapter(myAdapter);
 
-                            myListView.setAdapter(myAdapter);
+                                myListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                    @Override
+                                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
-                            myListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                                @Override
-                                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-
-                                    JobsInfo tempjobsList = (JobsInfo) myListView.getItemAtPosition(position);
-                                    Intent intent = new Intent(Jobs.this, Job_Information.class).putExtra("JobData", (Parcelable) tempjobsList);
-                                    intent.putExtra("protemp", protemp);
-                                    intent.putExtra("walletBalance", walletBalance);
-                                    Log.d("TestID", "Id of the document" + tempjobsList.getClientID());
-                                    intent.putExtra("connects", connects);
-                                    intent.putExtra("distanceCovered", distanceCovered);
-                                    intent.putExtra("longitudePickUp", pickUp.getLongitude());
-                                    intent.putExtra("latitudePickUp", pickUp.getLatitude());
-                                    intent.putExtra("longitudeDestination", destination.getLongitude());
-                                    intent.putExtra("latitudeDestination", destination.getLatitude());
-                                    startActivity(intent);
-                                }
-                            });
+                                        JobsInfo tempjobsList = (JobsInfo) myListView.getItemAtPosition(position);
+                                        Intent intent = new Intent(Jobs.this, Job_Information.class).putExtra("JobData", (Parcelable) tempjobsList);
+                                        intent.putExtra("protemp", protemp);
+                                        intent.putExtra("walletBalance", walletBalance);
+                                        intent.putExtra("connects", connects);
+                                        intent.putExtra("distanceCovered", distanceCovered);
+                                        intent.putExtra("longitudePickUp", pickUp.getLongitude());
+                                        intent.putExtra("latitudePickUp", pickUp.getLatitude());
+                                        intent.putExtra("longitudeDestination", destination.getLongitude());
+                                        intent.putExtra("latitudeDestination", destination.getLatitude());
+                                        startActivity(intent);
+                                    }
+                                });
+                            }
                         }
 
                     } else {
@@ -176,6 +173,7 @@ public class Jobs extends AppCompatActivity {
         });
 
     }
+
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     public boolean isInternetConnection() {

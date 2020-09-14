@@ -130,6 +130,7 @@ public class LocationService extends Service {
             stopSelf();
             return;
         }
+        //mFusedLocationClient.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 10, new MyLocationListener());
         Log.d(TAG, "getLocation: getting location information.");
         mFusedLocationClient.requestLocationUpdates(mLocationRequestHighAccuracy, new LocationCallback() {
                     @Override
@@ -144,7 +145,6 @@ public class LocationService extends Service {
                             GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
                             WorkerLocation userLocation = new WorkerLocation(user, geoPoint, null);
                             saveUserLocation(userLocation);
-
                         }
                     }
                 },

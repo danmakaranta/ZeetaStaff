@@ -24,20 +24,34 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity android:name=".Ride_Detail"></activity>
-        <activity android:name=".VerifyPhoneNumber" />
-        <activity android:name=".FashionDesignerDashboard" />
-        <activity android:name=".CreditCardLayout" />
-        <activity android:name=".RidePage" />
+        <activity
+            android:name=".VerifyPhoneNumber"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".FashionDesignerDashboard"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".CreditCardLayout"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".RidePage"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".StartPage"
             android:label="@string/title_activity_start_page"
+            android:screenOrientation="portrait"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".Job_Information"
             android:label="@string/title_activity_job__information"
+            android:screenOrientation="portrait"
             android:theme="@style/AppTheme.NoActionBar" />
-        <activity android:name=".Jobs" />
-        <activity android:name=".DashBoard" />
+        <activity
+            android:name=".Jobs"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".DashBoard"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".Request"
             android:label="@string/title_activity_request"
@@ -50,7 +64,9 @@
             android:name=".Enrollment"
             android:label="@string/title_activity_enrollment"
             android:theme="@style/AppTheme.NoActionBar" />
-        <activity android:name=".Signin" />
+        <activity
+            android:name=".Signin"
+            android:screenOrientation="portrait" />
 
         <uses-library
             android:name="org.apache.http.legacy"
@@ -70,7 +86,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".MapActivity" />
+        <activity
+            android:name=".MapActivity"
+            android:screenOrientation="portrait" />
 
         <service
             android:name=".services.LocationService"
