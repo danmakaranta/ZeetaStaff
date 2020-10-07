@@ -155,6 +155,7 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
         initialLoadingProgressDialog.setMessage("Loading...");
 
         chatLayout = findViewById(R.id.chatLayout);
+        chatLayout.setVisibility(View.GONE);
 
 
         if (loaderManager.getLoader(1) != null) {
@@ -618,6 +619,8 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
 
     private void startRide() {
+
+        chatLayout.setVisibility(View.GONE);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             rideInformation = FirebaseFirestore.getInstance()
                     .collection("Users")
@@ -630,7 +633,6 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()) {
                     startedJourney = true;
-                    chatLayout.setVisibility(View.GONE);
                     stopTimer();
                     new getDeviceLocationAsync().execute();
                     Toast.makeText(RidePage.this, "Journey Started!", Toast.LENGTH_SHORT).show();

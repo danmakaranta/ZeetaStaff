@@ -42,45 +42,42 @@
         android:overScrollMode="never"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <TextView
+        android:id="@+id/fashiondashBoardConnect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/initConect"
+        android:layout_marginBottom="10dp"
+        app:layout_constraintBottom_toTopOf="@+id/linearLayout4"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:textColor="#fff"
+        android:textSize="20sp"
+        app:layout_constraintStart_toStartOf="parent" />
 
-    <LinearLayout
-        android:id="@+id/linearLayout5"
+    <TextView
+        android:id="@+id/fashiondashboardWallet"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="10dp"
+        android:text="@string/initWalletValue"
+        android:textColor="#fff"
+        android:textSize="18sp"
+        app:layout_constraintBottom_toTopOf="@+id/fashiondashBoardConnect"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/fashionratingDashBoard"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="10dp"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toTopOf="@+id/linearLayout4"
+        android:text="@string/dashBoardRating"
+        android:textColor="#fff"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@+id/fashiondashboardWallet"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <TextView
-            android:id="@+id/fashiondashBoardConnect"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/initConect"
-            android:textColor="#000"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/fashiondashboardWallet"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="@string/initWalletValue"
-            android:textColor="#000"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/ratingDashBoard"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:text="@string/dashBoardRating"
-            android:textColor="#000"
-            android:textSize="20sp" />
-
-
-    </LinearLayout>
+        app:layout_constraintStart_toStartOf="parent" />
 
     <Button
         android:id="@+id/withdrawal_button"

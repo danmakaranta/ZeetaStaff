@@ -77,6 +77,11 @@ public class FashionDesignerDashboard extends AppCompatActivity {
     private int pageIndex;
     private long numberOfSamplePictures = 0;
     private String piclink;
+    private TextView ratings, walletBallance, connects;
+    private int connectsInt;
+    private String protemp;
+    private double walletBalanceDouble;
+    private String serviceProviderRating;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +92,19 @@ public class FashionDesignerDashboard extends AppCompatActivity {
 
         imageUrlList = new ArrayList();
         adapter2 = new ViewPagerAdapter(FashionDesignerDashboard.this, imageUrlList);
+
+        ratings = findViewById(R.id.fashionratingDashBoard);
+        connects = findViewById(R.id.fashiondashBoardConnect);
+        walletBallance = findViewById(R.id.fashiondashboardWallet);
+
+        connectsInt = getIntent().getIntExtra("connects", 0);
+        walletBalanceDouble = getIntent().getDoubleExtra("walletBalance", 0.0);
+        serviceProviderRating = getIntent().getStringExtra("rating");
+        protemp = getIntent().getStringExtra("protemp");
+
+        ratings.setText("Rating :" + serviceProviderRating);
+        walletBallance.setText("Wallet Ballance :N" + walletBalanceDouble);
+        connects.setText("Connects :" + connectsInt);
 
         uploadProgressDialog = new ProgressDialog(this);
         uploadProgressDialog.setMessage("Uploading...");
@@ -237,7 +255,19 @@ public class FashionDesignerDashboard extends AppCompatActivity {
                     case R.id.dashboard_button:
                         return true;
                     case R.id.jobs_button:
-                        startActivity(new Intent(getApplicationContext(), Jobs.class));
+                        if (protemp.equalsIgnoreCase("fashion designer")) {
+                            Intent dashIntent = new Intent(getApplicationContext(), Jobs.class).putExtra("walletBalance", walletBalanceDouble);
+                            dashIntent.putExtra("connects", connectsInt);
+                            dashIntent.putExtra("protemp", protemp);
+                            dashIntent.putExtra("rating", serviceProviderRating);
+                            startActivity(dashIntent);
+                        } else {
+                            Intent dashIntent = new Intent(getApplicationContext(), Jobs.class).putExtra("walletBalance", walletBalanceDouble);
+                            dashIntent.putExtra("connects", connectsInt);
+                            dashIntent.putExtra("protemp", protemp);
+                            dashIntent.putExtra("rating", serviceProviderRating);
+                            startActivity(dashIntent);
+                        }
                         return true;
                     case R.id.home_button:
                         startActivity(new Intent(getApplicationContext(), MapActivity.class));

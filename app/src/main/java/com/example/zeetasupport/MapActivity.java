@@ -31,10 +31,13 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.Interpolator;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -53,6 +56,7 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -208,6 +212,13 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     private float rot1 = 180, rot2 = 60, rot3 = 90;
     private Runnable r;
 
+    //Car animation variable
+    float Bearing = 0;
+    boolean AnimationStatus = false;
+    Bitmap BitMapMarker;
+    private Location myUpdatedLocation;
+    private Location myLocation;
+
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
             throw new IllegalArgumentException
@@ -240,6 +251,22 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             //new getDeviceLocationAsync().execute();
         }
 
+        mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+        mMap.setTrafficEnabled(true);
+        mMap.setIndoorEnabled(true);
+        mMap.setBuildingsEnabled(true);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        mMap.setMyLocationEnabled(true);
+
         mMap.setOnPolylineClickListener(this);
     }
 
@@ -255,87 +282,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     }
 
     private TextView walletBalancetxt;
-
-    private void listenForJobRequestFD() {
-        stopListenningForRequest();
-
-        clientRequest.addSnapshotListener(new EventListener<DocumentSnapshot>() {
-            @Override
-            public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
-
-                if (e != null) {
-                    Log.w(TAG, "Listen failed.", e);
-                    return;
-                }
-                String acceptedAlready;
-                assert documentSnapshot != null;
-                if (documentSnapshot.exists()) {
-                    acceptedAlready = documentSnapshot.getString("accepted");
-                } else {
-                    acceptedAlready = "";
-                }
-                try {// nothing more but to slow down execution a bit to get results before proceeding
-                    Thread.sleep(2000);
-                } catch (InterruptedException excp) {
-                    excp.printStackTrace();
-                }
-
-                if (documentSnapshot.exists() && online_status && acceptedAlready.equalsIgnoreCase("Awaiting")) {
-                    Log.d(TAG, "Current data: " + documentSnapshot.getData());
-                    Log.d(TAG, "A change has been effected on this doc");
-                    String change = documentSnapshot.get("accepted").toString();
-
-
-                    if (change.equalsIgnoreCase("awaiting")) {
-                        incomingRequest = true;
-                        ringtone.play();
-                        incomingRequestDialog = new AlertDialog.Builder(MapActivity.this);
-                        incomingRequestDialog.setMessage("You have an incoming request. Do you want to accept it?")
-                                .setCancelable(true)
-                                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                                    public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-                                        //do whatever you want down here!!!!
-                                        dialog.dismiss();
-                                        acceptRequest();
-                                        ringtone.stop();
-                                        incomingRequest = false;
-                                        alertForRequest.dismiss();
-                                    }
-                                })
-                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                                    public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-                                        incomingRequest = false;
-                                        alertForRequest.dismiss();
-                                        declineRequest();
-                                        ringtone.stop();
-                                        dialog.dismiss();
-                                    }
-                                });
-
-                        alertForRequest = incomingRequestDialog.create();
-                        alertForRequest.setTitle("Incoming request");
-                        alertForRequest.setIcon(R.drawable.zeetaicon);
-
-                        /*if (alertForRequest.isShowing()) {
-                            alertForRequest.dismiss();
-                        }*/
-                        alertForRequest.show();
-
-                        /*if (canceledRequest) {
-                            incomingRequest = false;
-                            alertForRequest.dismiss();
-                            clientRequest.delete();
-                            ringtone.stop();
-                        }*/
-
-                    }
-
-                } else {
-                    Log.d(TAG, "Current data: null");
-                }
-            }
-        });
-    }
 
 
     private void listenForJobRequest() {
@@ -1063,7 +1009,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                     .position(latlng)
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.newtopdown64))
                     .anchor(0.5f, 0.5f)
-                    .rotation(120)
                     .title("You"));
 
             //mMap.addMarker(options).setIcon(bitmapDescriptorFromVector(getApplicationContext(), R.drawable.newtopdown64));
@@ -1089,9 +1034,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             showSuspensionMessage(suspensionMessage);
         }
 
-
         handler = new Handler();
-        if (driverMarker != null) {
+        if (driverMarker != null && !AnimationStatus) {
             r = new Runnable() {
                 public void run() {
                     if (driverMarker.getRotation() == rot1) {
@@ -1105,10 +1049,79 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                 }
             };
         }
-
-
         handler.postDelayed(r, 3000);
+        GoogleMap.OnMyLocationChangeListener nMap;
 
+        mMap.setOnMyLocationChangeListener(location -> {
+
+            if (AnimationStatus) {
+                myUpdatedLocation = location;
+            } else {
+                myLocation = location;
+
+                myUpdatedLocation = location;
+                LatLng latlng1 = new LatLng(location.getLatitude(), location.getLongitude());
+                /*driverMarker = mMap.addMarker(new MarkerOptions().position(latlng).
+                        flat(true).icon(BitmapDescriptorFactory.fromBitmap(BitMapMarker)));*/
+                driverMarker.setPosition(latlng1);
+
+                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(
+                        latlng1, 17f);
+                mMap.animateCamera(cameraUpdate);
+                AnimationStatus = true;
+            }
+            Bearing = location.getBearing();
+            LatLng updatedLatLng = new LatLng(myUpdatedLocation.getLatitude(), myUpdatedLocation.getLongitude());
+            changePositionSmoothly(driverMarker, updatedLatLng, Bearing);
+
+        });
+
+    }
+
+    private void changePositionSmoothly(Marker myMarker, LatLng updatedLatLng, float bearing) {
+
+        final LatLng startPosition = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+        final LatLng finalPosition = updatedLatLng;
+        final Handler handler = new Handler();
+        final long start = SystemClock.uptimeMillis();
+        final Interpolator interpolator = new AccelerateDecelerateInterpolator();
+        final float durationInMs = 3000;
+        final boolean hideMarker = false;
+
+        handler.post(new Runnable() {
+            long elapsed;
+            float t;
+            float v;
+
+            @Override
+            public void run() {
+                myMarker.setRotation(bearing);
+                // Calculate progress using interpolator
+                elapsed = SystemClock.uptimeMillis() - start;
+                t = elapsed / durationInMs;
+                v = interpolator.getInterpolation(t);
+
+                LatLng currentPosition = new LatLng(
+                        startPosition.latitude * (1 - t) + finalPosition.latitude * t,
+                        startPosition.longitude * (1 - t) + finalPosition.longitude * t);
+
+                myMarker.setPosition(currentPosition);
+
+                // Repeat till progress is complete.
+                if (t < 1) {
+                    // Post again 16ms later.
+                    handler.postDelayed(this, 16);
+                } else {
+                    if (hideMarker) {
+                        myMarker.setVisible(false);
+                    } else {
+                        myMarker.setVisible(true);
+                    }
+                }
+                myLocation.setLatitude(updatedLatLng.latitude);
+                myLocation.setLongitude(updatedLatLng.longitude);
+            }
+        });
 
     }
 
@@ -1118,6 +1131,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(MapActivity.this);
     }
+
 
     private void getLocationPermission() {
         String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
@@ -1254,13 +1268,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                                 Log.d(TAG, "there was an error saving location");
                             } else {
                                 online_status = true;
-                                if (protemp.equalsIgnoreCase("Fashion Designer")) {
-                                    listenForJobRequestFD();
-                                } else if (protemp.equalsIgnoreCase("Taxi") || protemp.equalsIgnoreCase("Tricycle(keke)")) {
-                                    listenForJobRequest();
-                                } else {
-                                    listenForJobRequest();
-                                }
+
+                                listenForJobRequest();
 
                                 connect.setVisibility(View.GONE);
                                 loadingProgressDialog.dismiss();
