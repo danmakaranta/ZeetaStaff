@@ -101,6 +101,7 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
+import co.paystack.android.PaystackSdk;
 
 import static com.example.zeetasupport.util.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
 import static com.google.firebase.auth.FirebaseAuth.getInstance;
@@ -245,11 +246,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         googleMap.getUiSettings().setMyLocationButtonEnabled(true);
         googleMap.getUiSettings().setZoomControlsEnabled(true);
 
-
         mMap = googleMap;
-        if (mLocationPermissionGranted) {
-            //new getDeviceLocationAsync().execute();
-        }
 
         mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         mMap.setTrafficEnabled(true);
@@ -507,6 +504,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
         connect = findViewById(R.id.connect_view);
+
+        PaystackSdk.initialize(getApplicationContext());
 
         loadingProgressDialog = new ProgressDialog(this);
         loadingProgressDialog.setMessage("Connecting...");
@@ -925,7 +924,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
     private void buyWithCard() {
         connectDialog.dismiss();
-        startActivity(new Intent(getApplicationContext(), CreditCardLayout.class));
+        Intent cardchargeIntent = new Intent(MapActivity.this, CreditCardLayout.class);
+        cardchargeIntent.putExtra("connectRate", connectRate);
+        startActivity(cardchargeIntent);
+        //startActivity(new Intent(getApplicationContext(), CreditCardLayout.class));
     }
 
     private boolean checkMapServices() {
@@ -1065,13 +1067,14 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         flat(true).icon(BitmapDescriptorFactory.fromBitmap(BitMapMarker)));*/
                 driverMarker.setPosition(latlng1);
 
-                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(
+                /*CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(
                         latlng1, 17f);
-                mMap.animateCamera(cameraUpdate);
+                mMap.animateCamera(cameraUpdate);*/
                 AnimationStatus = true;
             }
             Bearing = location.getBearing();
             LatLng updatedLatLng = new LatLng(myUpdatedLocation.getLatitude(), myUpdatedLocation.getLongitude());
+
             changePositionSmoothly(driverMarker, updatedLatLng, Bearing);
 
         });
@@ -1106,6 +1109,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         startPosition.longitude * (1 - t) + finalPosition.longitude * t);
 
                 myMarker.setPosition(currentPosition);
+                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(
+                        currentPosition, 17f);
+                mMap.animateCamera(cameraUpdate);
+                mMap.moveCamera(cameraUpdate);
 
                 // Repeat till progress is complete.
                 if (t < 1) {
@@ -1679,11 +1686,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         Button minusConnectBtn = payWithWaletDialog.findViewById(R.id.minus_connects);
         Button addConnectBtn = payWithWaletDialog.findViewById(R.id.add_connects);
         Button walletPayBtn = payWithWaletDialog.findViewById(R.id.payWithWallet);
-        Log.d(TAG, "selected number of connects: Init " + selectedNumberOfConnects);
-
 
         totalPurchased.setText("N" + (Integer.parseInt(connectsInputET.getText().toString())) * connectRate);
-
 
         minusConnectBtn.setOnClickListener(new View.OnClickListener() {
             @Override
