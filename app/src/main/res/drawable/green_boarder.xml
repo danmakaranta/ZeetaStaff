@@ -5,7 +5,7 @@
             border
             <stroke
                 android:width="5dp"
-                android:color="#7fff94" />
+                android:color="#009EFD" />
 
             <!-- different corners with different radius-->
             corners

@@ -102,6 +102,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import co.paystack.android.PaystackSdk;
+import co.paystack.android.model.Card;
 
 import static com.example.zeetasupport.util.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
 import static com.google.firebase.auth.FirebaseAuth.getInstance;
@@ -926,15 +927,14 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         connectDialog.dismiss();
         Intent cardchargeIntent = new Intent(MapActivity.this, CreditCardLayout.class);
         cardchargeIntent.putExtra("connectRate", connectRate);
+        cardchargeIntent.putExtra("minPurchaseValue", minPurchaseValue);
         startActivity(cardchargeIntent);
         //startActivity(new Intent(getApplicationContext(), CreditCardLayout.class));
     }
 
     private boolean checkMapServices() {
         if (isServicesOk()) {
-            if (isMapsEnabled()) {
-                return true;
-            }
+            return isMapsEnabled();
         }
         return false;
     }
@@ -1755,7 +1755,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         String detail = selectedNumberOfConnects + " Connects purchase";
                         transactionProgressDialog.show();
                         transactionData = new TransactionData(detail, FirebaseAuth.getInstance().getUid(), true, (long) amountToPurchase,
-                                transacTime, null, "Wallet Debit");
+                                transacTime, (Card) null, "Wallet Debit");
                         DocumentReference newPurchase = FirebaseFirestore.getInstance()
                                 .collection("ConnectPurchase").document("newRequest")
                                 .collection(FirebaseAuth.getInstance().getUid()).document();

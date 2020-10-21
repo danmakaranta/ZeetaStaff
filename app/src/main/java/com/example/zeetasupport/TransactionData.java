@@ -25,6 +25,27 @@ public class TransactionData implements Parcelable {
     private long amountPaid;
     private Timestamp date;
     private Card card;
+    private co.paystack.android.model.Card payStackcard;
+
+    public TransactionData(String detail, String customerID, boolean paidArtisan, long amountPaid, Timestamp date, co.paystack.android.model.Card payStackcard, String type) {
+        this.detail = detail;
+        this.customerID = customerID;
+        this.paidArtisan = paidArtisan;
+        this.amountPaid = amountPaid;
+        this.date = date;
+        this.payStackcard = payStackcard;
+        this.type = type;
+    }
+
+
+    public co.paystack.android.model.Card getPayStackcard() {
+        return payStackcard;
+    }
+
+    public void setPayStackcard(co.paystack.android.model.Card payStackcard) {
+        this.payStackcard = payStackcard;
+    }
+
     private String type;// cash or card or wallet
 
     protected TransactionData(Parcel in) {

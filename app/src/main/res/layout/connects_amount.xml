@@ -106,7 +106,7 @@
         android:id="@+id/payWithWallet"
         android:layout_width="80dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
+        android:layout_marginBottom="15dp"
         android:background="@drawable/custom_button"
         android:text="Pay"
         android:textSize="20sp"

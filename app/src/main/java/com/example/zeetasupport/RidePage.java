@@ -76,6 +76,7 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
+import co.paystack.android.model.Card;
 
 public class RidePage extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnPolylineClickListener, LoaderManager.LoaderCallbacks<GeneralJobData> {
 
@@ -385,10 +386,10 @@ public class RidePage extends FragmentActivity implements OnMapReadyCallback, Go
 
         Timestamp transacTime = Timestamp.now();
         transactionData = new TransactionData("Wallet deposit from customer", journeyInfo.getServiceID(), true, journeyInfo.getAmountPaid(),
-                transacTime, null, "Wallet Credit");
+                transacTime, (Card) null, "Wallet Credit");
 
         transactionDataForCustomers = new TransactionData("Wallet debit for " + journeyInfo.getServiceRendered(), FirebaseAuth.getInstance().getUid(), true, journeyInfo.getAmountPaid(),
-                transacTime, null, "Wallet Debit");
+                transacTime, (Card) null, "Wallet Debit");
 
         endRideDialog = new AlertDialog.Builder(RidePage.this);
         endRideDialog.setCancelable(true)
