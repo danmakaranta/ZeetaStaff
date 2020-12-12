@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Zeeta Support</string>
-    <string name="google_maps_api_key">AIzaSyBRF9J5usBm29bgTLWAu5YhR9-WFLNt0Yk</string>
+    <string name="google_maps_api_key">AIzaSyAUeEOQVd9fa33fveHHQnCAdFzYOocU_6Y</string>
     <string name="google_directions_api_key">AIzaSyB9nZYenhhs6M8MEXs4xqBYDmaiPpMP4mQ</string>
     <string name="prompt_email">Email</string>
     <string name="prompt_password">Password</string>

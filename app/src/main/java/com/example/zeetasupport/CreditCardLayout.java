@@ -34,10 +34,8 @@ public class CreditCardLayout extends AppCompatActivity {
     private static final String TAG = "CreditCardLayout :";
     //payment variables
     CardForm cardForm;
-    Button buyBtn;
     Card card;
     AlertDialog.Builder paymentAlertBuilder;
-    private AlertDialog paymentAlertDialog;
     private int connectRate;
     private int selectedNumberOfConnects;
     private int temp;
@@ -77,14 +75,10 @@ public class CreditCardLayout extends AppCompatActivity {
         Charge charge = new Charge();
         charge.setCard(card); //sets the card to charge
         charge.setEmail("kwadagonigerialtd@gmail.com"); //dummy email address
-        charge.setAmount((int) (100 * amountToPurchase)); //test amount
-
-        //call this method if you set a plan
-        //charge.setPlan("One_off");
-
+        charge.setAmount((int) (100 * amountToPurchase)); //charge amount
 
         DocumentReference newPurchase = FirebaseFirestore.getInstance()
-                .collection("ConnectPurchase").document("newRequest")
+                .collection("Transactions").document("ConnectPurchase")
                 .collection(FirebaseAuth.getInstance().getUid()).document();
 
         Timestamp transacTime = Timestamp.now();
@@ -193,7 +187,6 @@ public class CreditCardLayout extends AppCompatActivity {
                         paymentAlertBuilder = new AlertDialog.Builder(CreditCardLayout.this);
                         paymentAlertBuilder.setTitle("Confirm before purchase");
                         paymentAlertBuilder.setMessage("Purchase of Connects from your card: " + cardForm.getCardNumber() + " ?");
-
 
                         paymentAlertBuilder.setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
                             @Override

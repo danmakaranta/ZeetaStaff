@@ -77,12 +77,15 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.GeoPoint;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.ServerTimestamp;
 import com.google.maps.DirectionsApiRequest;
 import com.google.maps.GeoApiContext;
@@ -220,6 +223,8 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
     Bitmap BitMapMarker;
     private Location myUpdatedLocation;
     private Location myLocation;
+    private Card tempCard;
+    private Card userPaymentCard;
 
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
@@ -587,6 +592,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
         incomingRequestDialog = new AlertDialog.Builder(MapActivity.this);
         alertForRequest = incomingRequestDialog.create();
 
+        userPaymentRecord("CARD1");
 
         markerPinned = false;
         if (mGeoApiContext == null) {
@@ -713,7 +719,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             }
         });
 
-
     }
 
     private void listenForPushOffline() {
@@ -744,7 +749,6 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             }
 
         });
-
 
     }
 
@@ -1757,7 +1761,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                         transactionData = new TransactionData(detail, FirebaseAuth.getInstance().getUid(), true, (long) amountToPurchase,
                                 transacTime, (Card) null, "Wallet Debit");
                         DocumentReference newPurchase = FirebaseFirestore.getInstance()
-                                .collection("ConnectPurchase").document("newRequest")
+                                .collection("ConnectPurchase").document("Wallet")
                                 .collection(FirebaseAuth.getInstance().getUid()).document();
                         DocumentReference walletUpdate = FirebaseFirestore.getInstance()
                                 .collection("Users").document(FirebaseAuth.getInstance().getUid())
@@ -1809,6 +1813,57 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
 
         payWithWaletDialog.show();
 
+    }
+
+    private Card userPaymentRecord(String cardNum) {
+
+        DocumentReference newCard = FirebaseFirestore.getInstance()
+                .collection("Payments").document(Objects.requireNonNull("Cards"))
+                .collection("Customers").document(FirebaseAuth.getInstance().getUid())
+                .collection(cardNum).document();
+        CollectionReference newCard2 = FirebaseFirestore.getInstance()
+                .collection("Payments").document(Objects.requireNonNull("Cards"))
+                .collection("Customers").document(FirebaseAuth.getInstance().getUid())
+                .collection("CARD1");
+
+        newCard2.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @RequiresApi(api = Build.VERSION_CODES.N)
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                for (QueryDocumentSnapshot document : task.getResult()) {
+                    if (!document.getData().isEmpty()) {
+                        String cardNumber, cardCvv;
+                        int cardYear, cardMonth;
+                        cardNumber = document.getString("number");
+                        cardCvv = document.getString("cvc");
+                        cardMonth = Math.toIntExact(document.getLong("expiryMonth"));
+                        cardYear = Math.toIntExact(document.getLong("expiryYear"));
+                        tempCard = new Card(cardNumber, cardMonth, cardYear, cardCvv);
+                        Log.d(TAG, "Credit Card Number: " + tempCard.getNumber());
+                    }
+                }
+            }
+        });
+
+        newCard.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @RequiresApi(api = Build.VERSION_CODES.N)
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                DocumentSnapshot doc = task.getResult();
+
+                if (doc.exists()) {
+                    String cardNumber, cardCvv;
+                    int cardYear, cardMonth;
+                    cardNumber = doc.getString("number");
+                    cardCvv = doc.getString("cvc");
+                    cardMonth = Math.toIntExact(doc.getLong("expiryMonth"));
+                    cardYear = Math.toIntExact(doc.getLong("expiryYear"));
+                    tempCard = new Card(cardNumber, cardMonth, cardYear, cardCvv);
+                }
+            }
+        });
+
+        return tempCard;
     }
 
     private void walletBalanceUpdate() {
@@ -1869,6 +1924,10 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
                 if (suspended) {
                     tempButton.setEnabled(false);
                 }
+
+            }
+            if (tempCard != null) {
+                Log.d(TAG, "Credit card Number: " + tempCard.getNumber());
             }
 
         }
@@ -1884,6 +1943,7 @@ public class MapActivity extends FragmentActivity implements LoaderManager.Loade
             criteria = new Criteria();
             bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
             updateConnectRate();
+
 
             Log.d(TAG, "getDeviceLocation: getting the device current location");
 

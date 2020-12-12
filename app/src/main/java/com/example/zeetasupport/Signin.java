@@ -139,7 +139,6 @@ public class Signin extends AppCompatActivity implements
                                 hideDialog();
                                 showDialog();
                             }
-
                         }
                     }).addOnFailureListener(new OnFailureListener() {
                 @Override
